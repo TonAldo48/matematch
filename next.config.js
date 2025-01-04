@@ -4,6 +4,14 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'logo.clearbit.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.google.com',
+      },
+      {
+        protocol: 'https',
         hostname: 'a0.muscache.com',
       },
       {
@@ -15,6 +23,13 @@ const nextConfig = {
         hostname: 'a2.muscache.com',
       }
     ],
+  },
+  webpack(config) {
+    config.module.rules.push({
+      test: /\.svg$/,
+      use: ['@svgr/webpack'],
+    })
+    return config
   },
 }
 

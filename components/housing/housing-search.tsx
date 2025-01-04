@@ -23,6 +23,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import { useLocalStorage } from "@/hooks/use-local-storage"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface Distance {
   driving?: {
@@ -77,6 +78,8 @@ const DEFAULT_FILTERS = {
 
 const LISTINGS_PER_PAGE = 9 // 3x3 grid
 
+type SortOption = 'price_low' | 'price_high' | 'distance' | 'rating';
+
 export function HousingSearch() {
   const { userProfile } = useUserProfile()
   const { toast } = useToast()
@@ -100,6 +103,7 @@ export function HousingSearch() {
   const [processedListings, setProcessedListings] = useState<ListingWithDistance[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+  const [sortBy, setSortBy] = useState<SortOption>('price_low');
 
   // Add a new effect to handle initial state hydration
   useEffect(() => {
@@ -285,8 +289,8 @@ export function HousingSearch() {
       if (formInputs.checkOut) searchUrl.searchParams.set("checkout", format(formInputs.checkOut, "yyyy-MM-dd"))
       
       // Add filter parameters
-      searchUrl.searchParams.set("price_min", activeFilters.priceRange[0].toString())
-      searchUrl.searchParams.set("price_max", activeFilters.priceRange[1].toString())
+      searchUrl.searchParams.set("price_min", (activeFilters.priceRange[0] / 30).toString())
+      searchUrl.searchParams.set("price_max", (activeFilters.priceRange[1] / 30).toString())
       searchUrl.searchParams.set("min_bedrooms", "1")
       searchUrl.searchParams.set("max_bedrooms", activeFilters.maxBeds.toString())
       if (activeFilters.instantBook) searchUrl.searchParams.set("instant_book", "true")
@@ -327,6 +331,9 @@ export function HousingSearch() {
         await new Promise(resolve => setTimeout(resolve, 100))
       }
 
+      const sortedListings = sortListings(newListings);
+      setProcessedListings(sortedListings);
+
       setCurrentPage(page)
       setTotalPages(Math.ceil(data.total / LISTINGS_PER_PAGE))
       
@@ -337,7 +344,7 @@ export function HousingSearch() {
 
       // Save search state immediately after completing
       setStoredSearch({
-        listings: newListings,
+        listings: sortedListings,
         formInputs,
         activeFilters,
         currentPage: page,
@@ -601,6 +608,52 @@ export function HousingSearch() {
     }
   }, [userProfile, initialLoadDone])
 
+  const calculateMonthlyPrice = (price: { 
+    discounted?: number, 
+    original: number, 
+    period: string 
+  }) => {
+    const basePrice = price.discounted || price.original;
+    // Always treat price as nightly unless explicitly marked as monthly
+    return price.period === 'month' ? basePrice : Math.round(basePrice * 30);
+  }
+
+  const sortListings = (listings: ListingWithDistance[]) => {
+    return [...listings].sort((a, b) => {
+      switch (sortBy) {
+        case 'price_low':
+          return (a.price.discounted || a.price.original) - (b.price.discounted || b.price.original);
+        case 'price_high':
+          return (b.price.discounted || b.price.original) - (a.price.discounted || a.price.original);
+        case 'distance':
+          // Put listings with distance at the top
+          if (a.distance && !b.distance) return -1;
+          if (!a.distance && b.distance) return 1;
+          if (!a.distance && !b.distance) return 0;
+          // If both have distance, sort by driving distance
+          if (a.distance && b.distance) {
+            return (a.distance.driving?.distance.value || 0) - (b.distance.driving?.distance.value || 0);
+          }
+          return 0;
+        case 'rating':
+          // Put listings with ratings at the top
+          if (a.rating && !b.rating) return -1;
+          if (!a.rating && b.rating) return 1;
+          if (!a.rating && !b.rating) return 0;
+          return (b.rating.score || 0) - (a.rating.score || 0);
+        default:
+          return 0;
+      }
+    });
+  };
+
+  // Add this effect to sort listings when they change or sort option changes
+  useEffect(() => {
+    if (processedListings.length > 0) {
+      setProcessedListings(sortListings(processedListings));
+    }
+  }, [sortBy]);
+
   return (
     <div className="space-y-6 w-full">
       {/* Company Information */}
@@ -677,9 +730,9 @@ export function HousingSearch() {
 
           {/* Filters Row */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Price Range */}
+            {/* Monthly Budget Range */}
             <div>
-              <label className="text-sm font-medium mb-2 block">Price Range</label>
+              <label className="text-sm font-medium mb-2 block">Monthly Budget Range</label>
               <div className="flex items-center gap-2">
                 <Input 
                   type="number"
@@ -688,7 +741,7 @@ export function HousingSearch() {
                     ...prev,
                     priceRange: [parseInt(e.target.value), prev.priceRange[1]]
                   }))}
-                  placeholder="Min"
+                  placeholder="Min/month"
                   className="w-24"
                 />
                 <span>-</span>
@@ -699,7 +752,7 @@ export function HousingSearch() {
                     ...prev,
                     priceRange: [prev.priceRange[0], parseInt(e.target.value)]
                   }))}
-                  placeholder="Max"
+                  placeholder="Max/month"
                   className="w-24"
                 />
               </div>
@@ -771,6 +824,29 @@ export function HousingSearch() {
       {/* Results */}
       {processedListings.length > 0 && (
         <>
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Sort by:</span>
+              <Select
+                value={sortBy}
+                onValueChange={(value: SortOption) => setSortBy(value)}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="price_low">Price: Low to High</SelectItem>
+                  <SelectItem value="price_high">Price: High to Low</SelectItem>
+                  <SelectItem value="distance">Distance</SelectItem>
+                  <SelectItem value="rating">Rating</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-sm text-gray-600">
+              Showing {processedListings.length} listings
+            </p>
+          </div>
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {processedListings.map((listing, index) => (
               <Card 
@@ -901,24 +977,12 @@ export function HousingSearch() {
                   <div className="flex items-baseline gap-2">
                     <p className="font-semibold text-lg">
                       {listing.price.currency}
-                      {listing.price.discounted || listing.price.original}
-                      <span className="text-sm text-gray-600">
-                        /{listing.price.period}
-                      </span>
+                      {calculateMonthlyPrice(listing.price)}
+                      <span className="text-sm text-gray-600">/month est.</span>
                     </p>
-                    {listing.price.discounted && listing.price.original && (
-                      <>
-                        <p className="text-sm text-gray-600 line-through">
-                          {listing.price.currency}{listing.price.original}
-                        </p>
-                        {!isNaN(listing.price.original - listing.price.discounted) && (
-                          <p className="text-sm text-green-600">
-                            Save {listing.price.currency}
-                            {(listing.price.original - listing.price.discounted).toLocaleString()}
-                          </p>
-                        )}
-                      </>
-                    )}
+                    <span className="text-xs text-gray-500">
+                      (${listing.price.discounted || listing.price.original}/night)
+                    </span>
                   </div>
 
                   {/* Action Buttons */}

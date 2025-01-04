@@ -4,12 +4,14 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { UserProfileProvider } from "@/contexts/user-profile-context"
 import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from "@/contexts/auth-context"
+import { OnboardingProvider } from "@/contexts/onboarding-context"
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ColorStack",
-  description: "ColorStack Platform",
+  title: "MateMatch",
+  description: "Find your perfect intern housing match",
 };
 
 export default function RootLayout({
@@ -20,9 +22,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={cn(inter.className, "h-screen")}>
-        <UserProfileProvider>
-          {children}
-        </UserProfileProvider>
+        <AuthProvider>
+          <OnboardingProvider>
+            <UserProfileProvider>
+              {children}
+            </UserProfileProvider>
+          </OnboardingProvider>
+        </AuthProvider>
         <Toaster />
       </body>
     </html>

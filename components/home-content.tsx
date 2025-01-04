@@ -1,186 +1,163 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle2, Calendar, ExternalLink, Github, Youtube, Store, Shield, Linkedin, Instagram, Twitter } from "lucide-react"
+import { 
+  Building2, 
+  Users, 
+  Calendar,
+  MapPin,
+  ArrowRight,
+  CheckCircle,
+  Clock
+} from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 
 export function HomeContent() {
+  const { user } = useAuth()
+  const firstName = user?.displayName?.split(' ')[0]
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold flex items-center gap-2">
-        Hey, David! 👋
-      </h1>
+    <div className="max-w-5xl mx-auto space-y-8">
+      {/* Welcome Section */}
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold">
+          Welcome back, {firstName}! 👋
+        </h1>
+        <p className="text-gray-600">
+          Find and connect with other interns for summer housing
+        </p>
+      </div>
 
-      {/* Activation Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-            Activation
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600 mb-4">
-            You've completed 1/5 activation requirements. Once you hit all 5, you will get a gift card to claim your FREE merch! 👀
-          </p>
-          <Button variant="secondary">See Progress</Button>
-        </CardContent>
-      </Card>
-
-      {/* Onboarding Session */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Attend an Onboarding Session 📅
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600 mb-4">
-            Attend an onboarding session to learn more about ColorStack and meet other members!
-          </p>
-          <Button className="bg-teal-600 hover:bg-teal-700">
-            Book Onboarding Session
-            <ExternalLink className="ml-2 h-4 w-4" />
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Activity Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Active Status</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600 mb-6">
-            You are considered active in a week if you have either sent a Slack message or reacted to a Slack message, in that week.
-          </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-medium mb-2">This Week (12/29 - 1/4)</h3>
-              <Badge variant="success">Active</Badge>
+      {/* Quick Actions */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="p-6 border-2 border-teal-100 bg-teal-50/50">
+          <div className="flex items-start justify-between mb-4">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">Complete Your Profile</h2>
+              <p className="text-sm text-gray-600">Help others find you as a potential roommate</p>
             </div>
-            <div>
-              <h3 className="font-medium mb-2">Last 16 Weeks</h3>
-              <div className="grid grid-cols-8 gap-1">
-                {Array(16).fill(null).map((_, i) => (
-                  <div 
-                    key={i}
-                    className={`h-4 w-full rounded ${i % 3 === 0 ? 'bg-red-500' : 'bg-green-500'}`}
-                  />
-                ))}
-              </div>
-            </div>
+            <Badge variant="secondary" className="bg-teal-100">2/5 Steps</Badge>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-600">Member #</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">14567</p>
-          </CardContent>
+          <Link href="/profile">
+            <Button className="w-full bg-teal-600 hover:bg-teal-700">
+              Update Profile
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-600">Total Members</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">13,547</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-600">Events Attended</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">0</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm text-gray-600">Messages Sent</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">9</p>
-          </CardContent>
+        <Card className="p-6 border-2 border-blue-100 bg-blue-50/50">
+          <div className="flex items-start justify-between mb-4">
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold">Find Housing</h2>
+              <p className="text-sm text-gray-600">Browse available listings near your internship</p>
+            </div>
+            <Badge variant="secondary" className="bg-blue-100">12 New</Badge>
+          </div>
+          <Link href="/housing">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700">
+              Browse Listings
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </Link>
         </Card>
       </div>
 
-      {/* Important Resources */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Important Resources</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Link href="#" className="flex items-center gap-2 text-teal-600 hover:underline">
-            <img src="/slack-logo.svg" alt="Slack" className="h-5 w-5" />
-            Slack
-            <span className="text-gray-600 font-normal">- The heartbeat of our community.</span>
-          </Link>
+      {/* Status Overview */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-4">Your Housing Status</h2>
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-gray-500" />
+            <div>
+              <p className="font-medium">Internship Location</p>
+              <p className="text-sm text-gray-600">Apple, Cupertino, CA</p>
+            </div>
+          </div>
           
-          <Link href="#" className="flex items-center gap-2 text-teal-600 hover:underline">
-            <Github className="h-5 w-5" />
-            GitHub
-            <span className="text-gray-600 font-normal">- The codebase where our software, called Oyster, lives. Go read + contribute to the codebase!</span>
-          </Link>
-          
-          <Link href="#" className="flex items-center gap-2 text-teal-600 hover:underline">
-            <Youtube className="h-5 w-5" />
-            YouTube Channel
-            <span className="text-gray-600 font-normal">- A collection of our past event recordings. Don't miss a beat!</span>
-          </Link>
-          
-          <Link href="#" className="flex items-center gap-2 text-teal-600 hover:underline">
-            <Store className="h-5 w-5" />
-            Merch Store
-            <span className="text-gray-600 font-normal">- Show off your ColorStack pride with our new merch collection!</span>
-          </Link>
-          
-          <Link href="#" className="flex items-center gap-2 text-teal-600 hover:underline">
-            <Shield className="h-5 w-5" />
-            Code of Conduct
-            <span className="text-gray-600 font-normal">- Don't act a fool. Abide by our Code of Conduct!</span>
-          </Link>
-        </CardContent>
+          <div className="flex items-center gap-3">
+            <Calendar className="h-5 w-5 text-gray-500" />
+            <div>
+              <p className="font-medium">Internship Dates</p>
+              <p className="text-sm text-gray-600">May 15 - Aug 15, 2024</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <MapPin className="h-5 w-5 text-gray-500" />
+            <div>
+              <p className="font-medium">Housing Search Area</p>
+              <p className="text-sm text-gray-600">Within 5 miles of office</p>
+            </div>
+          </div>
+        </div>
       </Card>
 
-      {/* Social Links */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">ColorStack Socials</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600 mb-4">
-            Be sure to follow us on all our socials to stay up to date with what's happening in ColorStack.
-          </p>
-          <div className="flex gap-4">
-            <Link href="#" className="text-teal-600 hover:text-teal-700">
-              <Linkedin className="h-6 w-6" />
-            </Link>
-            <Link href="#" className="text-teal-600 hover:text-teal-700">
-              <Instagram className="h-6 w-6" />
-            </Link>
-            <Link href="#" className="text-teal-600 hover:text-teal-700">
-              <Twitter className="h-6 w-6" />
-            </Link>
-            <Link href="#" className="text-teal-600 hover:text-teal-700">
-              <Github className="h-6 w-6" />
-            </Link>
-            <Link href="#" className="text-teal-600 hover:text-teal-700">
-              <Youtube className="h-6 w-6" />
-            </Link>
+      {/* Activity & Matches */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              </div>
+              <div>
+                <p className="font-medium">New Match Found</p>
+                <p className="text-sm text-gray-600">3 interns looking near Cupertino</p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center">
+                <Clock className="h-4 w-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-medium">Pending Responses</p>
+                <p className="text-sm text-gray-600">2 housing inquiries awaiting reply</p>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Potential Roommates</h2>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center font-medium">
+                  JD
+                </div>
+                <div>
+                  <p className="font-medium">John Doe</p>
+                  <p className="text-sm text-gray-600">Apple, iOS Engineer Intern</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm">
+                Connect
+              </Button>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center font-medium">
+                  AS
+                </div>
+                <div>
+                  <p className="font-medium">Alice Smith</p>
+                  <p className="text-sm text-gray-600">Apple, ML Engineer Intern</p>
+                </div>
+              </div>
+              <Button variant="outline" size="sm">
+                Connect
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   )
 } 

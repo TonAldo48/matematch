@@ -6,11 +6,13 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { routes } from "@/config/routes"
 import { useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, LogOut, Home } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 export function Sidebar() {
   const pathname = usePathname()
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
+  const { signOut } = useAuth()
 
   const toggleMenu = (label: string) => {
     setExpandedMenus(prev => 
@@ -22,11 +24,24 @@ export function Sidebar() {
 
   return (
     <div className="w-64 border-r h-full bg-white">
-      <div className="p-6">
-        <h1 className="text-xl font-bold">ColorStack</h1>
-      </div>
+      <Link href="/">
+        <div className="p-6 hover:bg-gray-50 transition-colors">
+          <h1 className="text-xl font-bold">MateMatch</h1>
+        </div>
+      </Link>
       
       <nav className="space-y-1 px-2">
+        <Link
+          href="/"
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100",
+            pathname === "/" && "bg-gray-100 text-teal-600"
+          )}
+        >
+          <Home className="h-4 w-4" />
+          Home
+        </Link>
+
         {routes.map((route) => {
           const Icon = route.icon
           
@@ -91,6 +106,17 @@ export function Sidebar() {
           )
         })}
       </nav>
+      
+      <div className="mt-auto p-4 border-t">
+        <Button 
+          variant="ghost" 
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+          onClick={signOut}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign Out
+        </Button>
+      </div>
     </div>
   )
 } 

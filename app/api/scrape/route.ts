@@ -76,7 +76,8 @@ export async function POST(req: Request) {
         const isGuestFavorite = card.find(':contains("Guest favorite")').length > 0
 
         // Extract price information - new structure
-        let originalPrice, discountedPrice, period
+        let originalPrice, discountedPrice
+        const period = 'night' // Always default to night
         
         // Find the price container with the specific class structure
         const priceContainer = card.find('div[style*="pricing-guest-display-price"]')
@@ -92,12 +93,6 @@ export async function POST(req: Request) {
           const discountedPriceEl = priceContainer.find('span._11jcbg2')
           if (discountedPriceEl.length) {
             discountedPrice = parseFloat(discountedPriceEl.text().replace(/[^0-9.]/g, ''))
-          }
-
-          // Find period (month/night)
-          const periodEl = priceContainer.find('span._ni9jsr')
-          if (periodEl.length) {
-            period = periodEl.text().toLowerCase()
           }
 
           // If no discounted price found, the current price is the original price
@@ -155,7 +150,7 @@ export async function POST(req: Request) {
               original: originalPrice,
               discounted: discountedPrice,
               currency: '$',
-              period: period || 'month'
+              period: 'night' // Always set to night
             },
             rating,
             images,
