@@ -14,17 +14,70 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
+import { useEffect, useState } from "react"
+import { doc, getDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+
+interface UserProfile {
+  firstName: string
+  currentPreferencesId?: string
+  hasCompletedOnboarding?: boolean
+}
+
+interface OnboardingPreferences {
+  companyName: string
+  role: string
+  location: {
+    address: string
+  }
+  internshipDates?: {
+    term: string
+    year: number
+  }
+}
 
 export function HomeContent() {
   const { user } = useAuth()
-  const firstName = user?.displayName?.split(' ')[0]
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const [preferences, setPreferences] = useState<OnboardingPreferences | null>(null)
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user) return
+      
+      try {
+        // Fetch user profile
+        const userProfileRef = doc(db, "userProfiles", user.uid)
+        const userProfileSnap = await getDoc(userProfileRef)
+        
+        if (userProfileSnap.exists()) {
+          const profileData = userProfileSnap.data() as UserProfile
+          setProfile(profileData)
+
+          // If user has preferences, fetch them
+          if (profileData.currentPreferencesId) {
+            const preferencesRef = doc(db, "onboardingPreferences", profileData.currentPreferencesId)
+            const preferencesSnap = await getDoc(preferencesRef)
+            
+            if (preferencesSnap.exists()) {
+              setPreferences(preferencesSnap.data() as OnboardingPreferences)
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+      }
+    }
+
+    fetchUserData()
+  }, [user])
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
       {/* Welcome Section */}
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">
-          Welcome back, {firstName}! 👋
+          Welcome back{profile?.firstName ? `, ${profile.firstName}` : ""}! 👋
         </h1>
         <p className="text-gray-600">
           Find and connect with other interns for summer housing
@@ -33,21 +86,38 @@ export function HomeContent() {
 
       {/* Quick Actions */}
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="p-6 border-2 border-teal-100 bg-teal-50/50">
-          <div className="flex items-start justify-between mb-4">
-            <div className="space-y-1">
-              <h2 className="text-lg font-semibold">Complete Your Profile</h2>
-              <p className="text-sm text-gray-600">Help others find you as a potential roommate</p>
+        {!profile?.hasCompletedOnboarding ? (
+          <Card className="p-6 border-2 border-teal-100 bg-teal-50/50">
+            <div className="flex items-start justify-between mb-4">
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold">Complete Your Profile</h2>
+                <p className="text-sm text-gray-600">Help others find you as a potential roommate</p>
+              </div>
+              <Badge variant="secondary" className="bg-teal-100">Required</Badge>
             </div>
-            <Badge variant="secondary" className="bg-teal-100">2/5 Steps</Badge>
-          </div>
-          <Link href="/profile">
-            <Button className="w-full bg-teal-600 hover:bg-teal-700">
-              Update Profile
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
-        </Card>
+            <Link href="/onboarding">
+              <Button className="w-full bg-teal-600 hover:bg-teal-700">
+                Start Onboarding
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </Card>
+        ) : (
+          <Card className="p-6 border-2 border-blue-100 bg-blue-50/50">
+            <div className="flex items-start justify-between mb-4">
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold">Update Profile</h2>
+                <p className="text-sm text-gray-600">Keep your preferences up to date</p>
+              </div>
+            </div>
+            <Link href="/profile">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                View Profile
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </Card>
+        )}
 
         <Card className="p-6 border-2 border-blue-100 bg-blue-50/50">
           <div className="flex items-start justify-between mb-4">
@@ -67,34 +137,44 @@ export function HomeContent() {
       </div>
 
       {/* Status Overview */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Your Housing Status</h2>
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-gray-500" />
-            <div>
-              <p className="font-medium">Internship Location</p>
-              <p className="text-sm text-gray-600">Apple, Cupertino, CA</p>
+      {preferences && (
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Your Housing Status</h2>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-5 w-5 text-gray-500" />
+              <div>
+                <p className="font-medium">Internship Location</p>
+                <p className="text-sm text-gray-600">
+                  {preferences.companyName}, {preferences.location.address}
+                </p>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-3">
-            <Calendar className="h-5 w-5 text-gray-500" />
-            <div>
-              <p className="font-medium">Internship Dates</p>
-              <p className="text-sm text-gray-600">May 15 - Aug 15, 2024</p>
-            </div>
-          </div>
+            
+            {preferences.internshipDates && (
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-gray-500" />
+                <div>
+                  <p className="font-medium">Internship Date</p>
+                  <p className="text-sm text-gray-600">
+                    {preferences.internshipDates.term && preferences.internshipDates.year ? 
+                      `${preferences.internshipDates.term} ${preferences.internshipDates.year}` :
+                      'Term not specified'}
+                  </p>
+                </div>
+              </div>
+            )}
 
-          <div className="flex items-center gap-3">
-            <MapPin className="h-5 w-5 text-gray-500" />
-            <div>
-              <p className="font-medium">Housing Search Area</p>
-              <p className="text-sm text-gray-600">Within 5 miles of office</p>
+            <div className="flex items-center gap-3">
+              <MapPin className="h-5 w-5 text-gray-500" />
+              <div>
+                <p className="font-medium">Housing Search Area</p>
+                <p className="text-sm text-gray-600">Within 5 miles of office</p>
+              </div>
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Activity & Matches */}
       <div className="grid gap-6 md:grid-cols-2">

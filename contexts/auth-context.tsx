@@ -1,99 +1,121 @@
-"use client"
+"use client";
 
-import { createContext, useContext, useEffect, useState } from 'react'
-import { 
-  GoogleAuthProvider, 
-  User, 
-  signInWithPopup, 
+import { createContext, useContext, useState, useEffect } from "react";
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  onAuthStateChanged
-} from 'firebase/auth'
-import { auth } from '@/lib/firebase'
-import { useRouter } from 'next/navigation'
-import Cookies from 'js-cookie'
+  onAuthStateChanged,
+} from "firebase/auth";
+import Cookies from "js-cookie"; // Import js-cookie for setting cookies
 
-interface AuthContextType {
-  user: User | null
-  loading: boolean
-  isNewUser: boolean
-  signInWithGoogle: () => Promise<void>
-  signOut: () => Promise<void>
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+interface User {
+  email: string | null;
+  uid: string;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  error: string | null;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isNewUser, setIsNewUser] = useState(false)
-  const router = useRouter()
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user)
-      
+    return onAuthStateChanged(auth, (user) => {
       if (user) {
-        // Check if user has completed onboarding
-        const hasOnboarded = localStorage.getItem(`onboarded_${user.uid}`)
-        setIsNewUser(!hasOnboarded)
-        
-        Cookies.set('auth', 'true', { expires: 7 })
-        
-        if (!hasOnboarded) {
-          router.push('/onboarding')
-        }
+        setUser({
+          email: user.email,
+          uid: user.uid,
+        });
+
+        // Set the "auth" cookie for the middleware
+        Cookies.set("auth", "true", { expires: 7 });
       } else {
-        Cookies.remove('auth')
-        router.push('/signin')
+        setUser(null);
+        Cookies.remove("auth"); // Remove the cookie if user is logged out
       }
-      
-      setLoading(false)
-    })
+      setLoading(false);
+    });
+  }, []);
 
-    return () => unsubscribe()
-  }, [router])
-
-  const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider()
+  const signUp = async (email: string, password: string) => {
     try {
-      const result = await signInWithPopup(auth, provider)
-      setUser(result.user)
-      
-      // Check if this is user's first sign in
-      const hasOnboarded = localStorage.getItem(`onboarded_${result.user.uid}`)
-      if (!hasOnboarded) {
-        setIsNewUser(true)
-        router.push('/onboarding')
-      } else {
-        router.push('/')
-      }
-    } catch (error) {
-      console.error('Error signing in with Google:', error)
+      setError(null);
+      await createUserWithEmailAndPassword(auth, email, password);
+
+      // Set the "auth" cookie after successful sign-up
+      Cookies.set("auth", "true", { expires: 7 });
+    } catch (error: any) {
+      setError(error.message);
+      throw error;
     }
-  }
+  };
+
+  const signIn = async (email: string, password: string) => {
+    try {
+      setError(null);
+      await signInWithEmailAndPassword(auth, email, password);
+
+      // Set the "auth" cookie after successful sign-in
+      Cookies.set("auth", "true", { expires: 7 });
+    } catch (error: any) {
+      setError(error.message);
+      throw error;
+    }
+  };
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth)
-      setUser(null)
-      Cookies.remove('auth')
-      router.push('/signin')
-    } catch (error) {
-      console.error('Error signing out:', error)
+      setError(null);
+      await firebaseSignOut(auth);
+
+      // Remove the "auth" cookie when signing out
+      Cookies.remove("auth");
+    } catch (error: any) {
+      setError(error.message);
+      throw error;
     }
-  }
+  };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isNewUser, signInWithGoogle, signOut }}>
+    <AuthContext.Provider
+      value={{ user, loading, signIn, signUp, signOut, error }}
+    >
       {children}
     </AuthContext.Provider>
-  )
+  );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error("useAuth must be used within an AuthProvider");
   }
-  return context
-} 
+  return context;
+}

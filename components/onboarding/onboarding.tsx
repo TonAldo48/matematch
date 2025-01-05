@@ -1,49 +1,61 @@
 "use client"
 
-import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { useOnboarding } from "@/contexts/onboarding-context"
 import { Welcome } from "./steps/welcome"
-import { RoleSelect } from "./steps/role-select"
-import { LocationSelect } from "./steps/location-select"
-import { PreferencesSelect } from "./steps/preferences-select"
-import { Completion } from "./steps/completion"
+import { BasicInfo } from "./steps/basic-info"
+import { CompanyInfo } from "./steps/company-info"
+import { BudgetPreferences } from "./steps/budget-preferences"
+import { LivingPreferences } from "./steps/living-preferences"
+import { Summary } from "./steps/summary"
 import { Progress } from "@/components/ui/progress"
-import { OnboardingFormProvider } from "@/contexts/onboarding-form-context"
-
-const steps = [
-  { component: Welcome, title: "Welcome" },
-  { component: RoleSelect, title: "Company" },
-  { component: LocationSelect, title: "Location" },
-  { component: PreferencesSelect, title: "Preferences" },
-  { component: Completion, title: "All Set!" },
-]
 
 export function Onboarding() {
-  const { currentStep, setCurrentStep } = useOnboarding()
-  const CurrentStep = steps[currentStep].component
+  const { currentStep, totalSteps } = useOnboarding()
+  
+  const progress = (currentStep / totalSteps) * 100
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return <Welcome />
+      case 2:
+        return <BasicInfo />
+      case 3:
+        return <CompanyInfo />
+      case 4:
+        return <BudgetPreferences />
+      case 5:
+        return <LivingPreferences />
+      case 6:
+        return <Summary />
+      default:
+        return <Welcome />
+    }
+  }
 
   return (
-    <OnboardingFormProvider>
-      <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50">
-        <div className="max-w-2xl mx-auto pt-20 px-4">
-          <div className="mb-8">
-            <Progress value={(currentStep / (steps.length - 1)) * 100} />
-          </div>
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-2xl mx-auto space-y-8">
+        <div className="space-y-2">
+          <h2 className="text-center text-3xl font-bold tracking-tight text-gray-900">
+            Welcome to MateMatch
+          </h2>
+          <p className="text-center text-gray-600">
+            Let's get to know you better
+          </p>
+        </div>
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentStep}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <CurrentStep onNext={() => setCurrentStep(currentStep + 1)} />
-            </motion.div>
-          </AnimatePresence>
+        <div className="space-y-2">
+          <Progress value={progress} className="w-full h-2" />
+          <p className="text-sm text-center text-gray-600">
+            Step {currentStep} of {totalSteps}
+          </p>
+        </div>
+
+        <div className="bg-white shadow sm:rounded-lg">
+          {renderStep()}
         </div>
       </div>
-    </OnboardingFormProvider>
+    </div>
   )
 } 

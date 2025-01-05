@@ -1,20 +1,20 @@
 "use client"
 
+import { useState, useRef } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { 
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { useState, useRef } from "react"
+import { Label } from "@/components/ui/label"
 import { useOnboardingForm } from "@/contexts/onboarding-form-context"
 import { NavigationControls } from "@/components/onboarding/navigation-controls"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Camera, Upload } from "lucide-react"
+import { Camera } from "lucide-react"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { schools } from "@/data/profiles"
 
 export function PersonalDetails({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { formData, updateFormData } = useOnboardingForm()
@@ -45,8 +46,8 @@ export function PersonalDetails({ onNext, onBack }: { onNext: () => void; onBack
     updateFormData({ name: e.target.value })
   }
 
-  const handleSchoolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateFormData({ school: e.target.value })
+  const handleSchoolChange = (value: string) => {
+    updateFormData({ school: value })
   }
 
   const handleGenderChange = (value: string) => {
@@ -69,40 +70,31 @@ export function PersonalDetails({ onNext, onBack }: { onNext: () => void; onBack
       <Card>
         <CardHeader>
           <CardTitle>Profile Picture</CardTitle>
-          <CardDescription>Add a photo to help others recognize you</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center space-y-4">
+        <CardContent className="flex flex-col items-center">
           <div className="relative">
-            <Avatar className="h-32 w-32">
+            <Avatar className="h-24 w-24">
               <AvatarImage src={imagePreview} />
-              <AvatarFallback className="text-2xl">
-                {formData.name?.split(' ').map(n => n[0]).join('') || '?'}
+              <AvatarFallback>
+                {formData.name?.split(' ').map(n => n[0]).join('') || 'U'}
               </AvatarFallback>
             </Avatar>
             <Button
+              variant="outline"
               size="icon"
-              variant="secondary"
               className="absolute bottom-0 right-0 rounded-full"
               onClick={() => fileInputRef.current?.click()}
             >
               <Camera className="h-4 w-4" />
             </Button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
           </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="image/*"
-            onChange={handleImageUpload}
-          />
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2"
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Upload className="h-4 w-4" />
-            Upload Photo
-          </Button>
         </CardContent>
       </Card>
 
@@ -122,11 +114,21 @@ export function PersonalDetails({ onNext, onBack }: { onNext: () => void; onBack
 
           <div className="space-y-2">
             <label className="font-medium">School</label>
-            <Input
-              placeholder="Enter your school name"
-              value={formData.school || ""}
-              onChange={handleSchoolChange}
-            />
+            <Select 
+              value={formData.school} 
+              onValueChange={handleSchoolChange}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select your school" />
+              </SelectTrigger>
+              <SelectContent>
+                {schools.map(school => (
+                  <SelectItem key={school} value={school}>
+                    {school}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -149,10 +151,11 @@ export function PersonalDetails({ onNext, onBack }: { onNext: () => void; onBack
         </CardContent>
       </Card>
 
-      <NavigationControls 
+      <NavigationControls
         onNext={onNext}
         onBack={onBack}
         canProgress={canProgress}
+        showBackButton={false}
       />
     </div>
   )

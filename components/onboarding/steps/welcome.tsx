@@ -1,55 +1,68 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/contexts/auth-context"
-import confetti from 'canvas-confetti'
+import { useOnboarding } from "@/contexts/onboarding-context"
+import { ArrowRight } from "lucide-react"
 
-export function Welcome({ onNext }: { onNext: () => void }) {
-  const { user } = useAuth()
-
-  const handleStart = () => {
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 }
-    })
-    onNext()
-  }
+export function Welcome() {
+  const { nextStep } = useOnboarding()
 
   return (
-    <motion.div 
-      className="text-center space-y-6"
-      initial={{ scale: 0.95 }}
-      animate={{ scale: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
-        <h1 className="text-4xl font-bold mb-2">
-          Welcome to MateMatch, {user?.displayName?.split(' ')[0]}! 👋
-        </h1>
-        <p className="text-gray-600 text-lg">
-          Let's get your profile set up to find your perfect housing match
+    <div className="p-6 space-y-6">
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold text-gray-900">
+          Find Your Perfect Roommate Match
+        </h3>
+        <p className="text-gray-600">
+          We'll guide you through a few quick steps to understand your preferences and help you find the perfect roommate match.
         </p>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4 }}
-      >
-        <Button 
-          size="lg"
-          className="bg-teal-600 hover:bg-teal-700"
-          onClick={handleStart}
+      <div className="space-y-4">
+        <h4 className="font-medium text-gray-900">What to expect:</h4>
+        <ul className="space-y-3">
+          <li className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-100 text-teal-800">
+                1
+              </div>
+            </div>
+            <p className="ml-3 text-gray-600">
+              Basic information about yourself
+            </p>
+          </li>
+          <li className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-100 text-teal-800">
+                2
+              </div>
+            </div>
+            <p className="ml-3 text-gray-600">
+              Your location preferences and budget
+            </p>
+          </li>
+          <li className="flex items-start">
+            <div className="flex-shrink-0">
+              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-100 text-teal-800">
+                3
+              </div>
+            </div>
+            <p className="ml-3 text-gray-600">
+              Living preferences and lifestyle
+            </p>
+          </li>
+        </ul>
+      </div>
+
+      <div className="pt-4">
+        <Button
+          onClick={nextStep}
+          className="w-full bg-teal-600 hover:bg-teal-700"
         >
           Let's Get Started
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   )
 } 

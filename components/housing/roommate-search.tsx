@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -187,6 +188,9 @@ export function RoommateSearch() {
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>Roommate Preferences</DialogTitle>
+                <DialogDescription>
+                  Set your preferences for finding compatible roommates
+                </DialogDescription>
               </DialogHeader>
               <form onSubmit={handlePreferencesSubmit} className="space-y-6">
                 {/* Budget Section */}
