@@ -1,17 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
-import { cn } from "@/lib/utils";
-import { UserProfileProvider } from "@/contexts/user-profile-context"
-import { Toaster } from "@/components/ui/toaster"
-import { AuthProvider } from "@/contexts/auth-context"
-import { OnboardingProvider } from "@/contexts/onboarding-context"
+import AppLayout from "@/components/AppLayout";
+import { AuthProvider } from "@/lib/context/auth-context";
 
-const inter = Inter({ subsets: ["latin"] });
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+});
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+});
 
 export const metadata: Metadata = {
   title: "MateMatch",
-  description: "Find your perfect intern housing match",
+  description: "Find your perfect housing mate",
 };
 
 export default function RootLayout({
@@ -20,16 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={cn(inter.className, "h-screen")}>
+    <html lang="en" className="h-full">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}>
         <AuthProvider>
-          <OnboardingProvider>
-            <UserProfileProvider>
-              {children}
-            </UserProfileProvider>
-          </OnboardingProvider>
+          <AppLayout>{children}</AppLayout>
         </AuthProvider>
-        <Toaster />
       </body>
     </html>
   );
