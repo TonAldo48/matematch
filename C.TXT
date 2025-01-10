@@ -1,0 +1,19 @@
+63:10  Error: 'moveInDate' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+63:22  Error: 'setMoveInDate' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+64:10  Error: 'moveOutDate' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+64:23  Error: 'setMoveOutDate' is assigned a value but never used.  @typescript-eslint/no-unused-vars
+105:58  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+362:69  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+405:69  Error: Unexpected any. Specify a different type.  @typescript-eslint/no-explicit-any
+457:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+469:19  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+./components/housing/SharedListingCard.tsx
+29:11  Warning: Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+./components/sidebar.tsx
+10:78  Error: 'X' is defined but never used.  @typescript-eslint/no-unused-vars
+./lib/context/auth-context.tsx
+36:6  Warning: React Hook useEffect has a missing dependency: 'router'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+./lib/utils/airbnb-url.ts
+40:7  Error: 'queryParams' is never reassigned. Use 'const' instead.  prefer-const
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+Error: Command "npm run build" exited with 1
