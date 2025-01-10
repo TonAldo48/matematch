@@ -7,7 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Building2, UserCircle, History, Star, Settings, LogOut, Menu, MapPin, Search, Users } from 'lucide-react';
+import { Home, Building2, UserCircle, History, Star, Settings, LogOut, Menu, X, MapPin, Search, Users } from 'lucide-react';
 import { signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import {

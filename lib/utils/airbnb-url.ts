@@ -37,46 +37,46 @@ export function generateAirbnbSearchUrl({
 
   const propertyPath = propertyTypePaths[propertyType] || '/homes';
   
-  const queryParams = new URLSearchParams();
-
-  queryParams.append('refinement_paths[]', propertyPath);
-  queryParams.append('flexible_trip_lengths[]', 'one_week');
-  queryParams.append('price_filter_input_type', '0');
-  queryParams.append('channel', 'EXPLORE');
-  queryParams.append('query', encodedLocation);
-  queryParams.append('adults', '1');
+  let queryParams = [
+    `refinement_paths[]=${propertyPath}`,
+    `flexible_trip_lengths[]=one_week`,
+    `price_filter_input_type=0`,
+    `channel=EXPLORE`,
+    `query=${encodedLocation}`,
+    `adults=1`
+  ];
 
   // Add amenity filters
   amenities.forEach(amenity => {
     const amenityId = amenityIds[amenity];
     if (amenityId) {
-      queryParams.append('amenities[]', amenityId);
+      queryParams.push(`amenities[]=${amenityId}`);
     }
   });
 
   // Add price filters
-  queryParams.append('price_filter_input_type', '0');
+  queryParams.push(`price_filter_input_type=0`);
   if (minPrice > 0) {
-    queryParams.append('price_min', minPrice.toString());
+    queryParams.push(`price_min=${minPrice}`);
   }
   if (maxPrice < 1000) {
-    queryParams.append('price_max', maxPrice.toString());
+    queryParams.push(`price_max=${maxPrice}`);
   }
-  queryParams.append('price_filter_num_nights', '5'); // Default number of nights for price calculation
+  queryParams.push(`price_filter_num_nights=5`); // Default number of nights for price calculation
 
   // Add date parameters if provided
   if (checkIn && checkOut) {
-    queryParams.append('date_picker_type', 'calendar');
-    queryParams.append('checkin', checkIn);
-    queryParams.append('checkout', checkOut);
-    queryParams.append('source', 'structured_search_input_header');
-    queryParams.append('search_type', 'autocomplete_click');
+    queryParams.push(`date_picker_type=calendar`);
+    queryParams.push(`checkin=${checkIn}`);
+    queryParams.push(`checkout=${checkOut}`);
+    queryParams.push(`source=structured_search_input_header`);
+    queryParams.push(`search_type=autocomplete_click`);
 
     // Calculate number of nights for price filter
     const startDate = new Date(checkIn);
     const endDate = new Date(checkOut);
     const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    queryParams.append('price_filter_num_nights', nights.toString());
+    queryParams.push(`price_filter_num_nights=${nights}`);
   }
 
   // Calculate monthly dates if dates are provided
@@ -86,10 +86,10 @@ export function generateAirbnbSearchUrl({
     const monthlyStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
     const monthlyEndDate = new Date(endDate.getFullYear(), endDate.getMonth() + 3, 1);
     
-    queryParams.append('monthly_start_date', monthlyStartDate.toISOString().split('T')[0]);
-    queryParams.append('monthly_end_date', monthlyEndDate.toISOString().split('T')[0]);
-    queryParams.append('monthly_length', '3');
+    queryParams.push(`monthly_start_date=${monthlyStartDate.toISOString().split('T')[0]}`);
+    queryParams.push(`monthly_end_date=${monthlyEndDate.toISOString().split('T')[0]}`);
+    queryParams.push(`monthly_length=3`);
   }
 
-  return `${baseUrl}/${encodedLocation}/homes?${queryParams.toString()}`;
+  return `${baseUrl}/${encodedLocation}/homes?${queryParams.join('&')}`;
 } 

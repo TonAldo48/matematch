@@ -18,7 +18,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import Image from 'next/image';
 
 interface DistanceInfo {
   driving: {
@@ -61,6 +60,8 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
   const [isInterested, setIsInterested] = useState(false);
   const [showInterestDialog, setShowInterestDialog] = useState(false);
   const [message, setMessage] = useState('');
+  const [moveInDate, setMoveInDate] = useState<Date | undefined>();
+  const [moveOutDate, setMoveOutDate] = useState<Date | undefined>();
   const { toast } = useToast();
   const { user } = useAuth();
   const [interestedUsers, setInterestedUsers] = useState<InterestedUser[]>([]);
@@ -101,7 +102,7 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
         const interestDoc = await getDoc(interestRef);
         if (interestDoc.exists()) {
           const data = interestDoc.data();
-          setIsInterested(data.interestedUsers?.some((u: InterestedUser) => u.userId === user.uid) || false);
+          setIsInterested(data.interestedUsers?.some((u: any) => u.userId === user.uid) || false);
         } else {
           setIsInterested(false);
         }
@@ -358,7 +359,7 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
       if (currentDoc.exists()) {
         // Update existing document
         const currentData = currentDoc.data();
-        const updatedUsers = currentData.interestedUsers.filter((u: InterestedUser) => u.userId !== user.uid);
+        const updatedUsers = currentData.interestedUsers.filter((u: any) => u.userId !== user.uid);
         await setDoc(interestRef, {
           listingId,
           interestedUsers: [...updatedUsers, newInterestedUser],
@@ -401,7 +402,7 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
       
       if (currentDoc.exists()) {
         const currentData = currentDoc.data();
-        const updatedUsers = currentData.interestedUsers.filter((u: InterestedUser) => u.userId !== user.uid);
+        const updatedUsers = currentData.interestedUsers.filter((u: any) => u.userId !== user.uid);
         
         if (updatedUsers.length === 0) {
           // If no users left, delete the document
@@ -453,12 +454,10 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
             <Dialog>
               <DialogTrigger asChild>
                 <button className="w-full h-full relative group">
-                  <Image
+                  <img
                     src={listing.images[0]}
                     alt={listing.title}
-                    width={800}
-                    height={500}
-                    className="w-full h-[200px] object-cover rounded-t-lg"
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Maximize2 className="w-6 h-6 text-white" />
@@ -467,11 +466,9 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
               </DialogTrigger>
               <DialogContent className="max-w-4xl">
                 <div className="aspect-video relative overflow-hidden rounded-lg">
-                  <Image
+                  <img
                     src={listing.images[0]}
                     alt={listing.title}
-                    width={800}
-                    height={500}
                     className="w-full h-full object-contain"
                   />
                 </div>

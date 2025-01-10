@@ -5,7 +5,6 @@ import { MapPin, Users } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InterestedUsersModal } from "./InterestedUsersModal";
 import { useState } from "react";
-import Image from 'next/image';
 
 interface SharedListingCardProps {
   listing: ScrapedListing;
@@ -27,12 +26,10 @@ export function SharedListingCard({
       <div className="flex gap-3 p-3">
         {/* Image */}
         <div className="relative w-32 h-32 flex-shrink-0">
-          <Image
+          <img
             src={listing.images[0]}
             alt={listing.title}
-            width={800}
-            height={500}
-            className="w-full h-[200px] object-cover rounded-t-lg"
+            className="absolute inset-0 w-full h-full object-cover rounded-md"
           />
           <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-medium">
             {listing.price.currency}{listing.price.amount}
