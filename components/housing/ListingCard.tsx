@@ -1,17 +1,23 @@
 import { MapPin, Car, Train, Maximize2, Star } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
-import { ScrapedListing } from '@/lib/types';
+import { ScrapedListing, StarredListing, InterestedUser, UserProfile } from '@/lib/types';
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/context/auth-context";
 import { db } from '@/lib/firebase';
-import { doc, setDoc, deleteDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, getDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import {
   Dialog,
   DialogContent,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { InterestedUsersModal } from './InterestedUsersModal';
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface DistanceInfo {
   driving: {
@@ -33,15 +39,33 @@ interface ListingCardProps {
       lng: number;
     };
   };
+  savedCommuteInfo?: {
+    calculatedAt: Date;
+    distanceInfo: DistanceInfo;
+    officeLocation: {
+      formatted: string;
+      coordinates: {
+        lat: number;
+        lng: number;
+      };
+    };
+  };
 }
 
-export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
-  const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(null);
+export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: ListingCardProps) {
+  const [distanceInfo, setDistanceInfo] = useState<DistanceInfo | null>(savedCommuteInfo?.distanceInfo || null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const [isStarring, setIsStarring] = useState(false);
+  const [isInterested, setIsInterested] = useState(false);
+  const [showInterestDialog, setShowInterestDialog] = useState(false);
+  const [message, setMessage] = useState('');
+  const [moveInDate, setMoveInDate] = useState<Date | undefined>();
+  const [moveOutDate, setMoveOutDate] = useState<Date | undefined>();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [interestedUsers, setInterestedUsers] = useState<InterestedUser[]>([]);
+  const [showUsersModal, setShowUsersModal] = useState(false);
 
   // Check if listing is starred on mount
   useEffect(() => {
@@ -61,6 +85,63 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
 
     checkIfStarred();
   }, [user, listing.url]);
+
+  // Check if user is interested in this listing
+  useEffect(() => {
+    const checkIfInterested = async () => {
+      if (!user) {
+        setIsInterested(false);
+        return;
+      }
+      
+      const listingId = listing.url.split('/rooms/')[1]?.split('?')[0];
+      if (!listingId) return;
+
+      try {
+        const interestRef = doc(db, 'listingInterests', listingId);
+        const interestDoc = await getDoc(interestRef);
+        if (interestDoc.exists()) {
+          const data = interestDoc.data();
+          setIsInterested(data.interestedUsers?.some((u: any) => u.userId === user.uid) || false);
+        } else {
+          setIsInterested(false);
+        }
+      } catch (error) {
+        console.error('Error checking interest status:', error);
+        setIsInterested(false);
+      }
+    };
+
+    checkIfInterested();
+  }, [user, listing.url]);
+
+  // Add effect to fetch interested users
+  useEffect(() => {
+    const listingId = listing.url.split('/rooms/')[1]?.split('?')[0];
+    if (!listingId) return;
+
+    const interestsRef = collection(db, 'listingInterests');
+    const q = query(interestsRef, where('listingId', '==', listingId));
+
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const users: InterestedUser[] = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.interestedUsers) {
+            users.push(...data.interestedUsers);
+          }
+        });
+        setInterestedUsers(users);
+      },
+      (error) => {
+        console.error('Error fetching interested users:', error);
+        setInterestedUsers([]);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [listing.url]);
 
   const handleStarToggle = async () => {
     if (!user) {
@@ -94,12 +175,23 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
           description: "Listing has been removed from your saved listings.",
         });
       } else {
-        await setDoc(listingRef, {
+        const listingData: Partial<StarredListing> = {
           ...listing,
           starredAt: new Date(),
           userId: user.uid,
           listingId,
-        });
+        };
+
+        // If we have distance info, include it
+        if (distanceInfo && userOfficeLocation) {
+          listingData.commuteInfo = {
+            calculatedAt: new Date(),
+            distanceInfo,
+            officeLocation: userOfficeLocation
+          };
+        }
+
+        await setDoc(listingRef, listingData);
         setIsStarred(true);
         toast({
           title: "Saved",
@@ -128,6 +220,15 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
       toast({
         title: "No office location",
         description: "Please set your office location in your profile first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to calculate and save commute times.",
         variant: "destructive",
       });
       return;
@@ -179,6 +280,20 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
       }
 
       setDistanceInfo(data);
+
+      // If the listing is starred, update the commute info in Firestore
+      const listingId = listing.url.split('/rooms/')[1]?.split('?')[0];
+      if (listingId && isStarred) {
+        const listingRef = doc(db, 'starredListings', user.uid, 'listings', listingId);
+        await setDoc(listingRef, {
+          commuteInfo: {
+            calculatedAt: new Date(),
+            distanceInfo: data,
+            officeLocation: userOfficeLocation
+          }
+        }, { merge: true });
+      }
+
       toast({
         title: "Success",
         description: "Distance calculated successfully",
@@ -192,6 +307,128 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
       });
     } finally {
       setIsCalculating(false);
+    }
+  };
+
+  const handleExpressInterest = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to show interest in sharing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const listingId = listing.url.split('/rooms/')[1]?.split('?')[0];
+    if (!listingId) {
+      toast({
+        title: "Error",
+        description: "Invalid listing URL.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Get user's profile data
+      const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+      const profileData = profileDoc.exists() ? profileDoc.data() : {};
+
+      // Create base profile with required fields
+      const userProfile: UserProfile = {
+        uid: user.uid,
+        displayName: profileData.fullName || user.displayName || 'Anonymous',
+        email: user.email || '',
+      };
+
+      // Only add optional fields if they exist
+      if (user.photoURL) userProfile.photoURL = user.photoURL;
+      if (profileData.company) userProfile.company = profileData.company;
+      if (profileData.role) userProfile.role = profileData.role;
+
+      const newInterestedUser: InterestedUser = {
+        userId: user.uid,
+        joinedAt: new Date(),
+        userProfile,
+      };
+
+      const interestRef = doc(db, 'listingInterests', listingId);
+      const currentDoc = await getDoc(interestRef);
+      
+      if (currentDoc.exists()) {
+        // Update existing document
+        const currentData = currentDoc.data();
+        const updatedUsers = currentData.interestedUsers.filter((u: any) => u.userId !== user.uid);
+        await setDoc(interestRef, {
+          listingId,
+          interestedUsers: [...updatedUsers, newInterestedUser],
+          lastUpdated: new Date(),
+        });
+      } else {
+        // Create new document
+        await setDoc(interestRef, {
+          listingId,
+          interestedUsers: [newInterestedUser],
+          lastUpdated: new Date(),
+        });
+      }
+
+      setIsInterested(true);
+      setShowUsersModal(false);
+      toast({
+        title: "Interest added",
+        description: "You are now listed as interested in sharing this listing.",
+      });
+    } catch (error) {
+      console.error('Error adding interest:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add interest. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveInterest = async () => {
+    if (!user) return;
+
+    const listingId = listing.url.split('/rooms/')[1]?.split('?')[0];
+    if (!listingId) return;
+
+    try {
+      const interestRef = doc(db, 'listingInterests', listingId);
+      const currentDoc = await getDoc(interestRef);
+      
+      if (currentDoc.exists()) {
+        const currentData = currentDoc.data();
+        const updatedUsers = currentData.interestedUsers.filter((u: any) => u.userId !== user.uid);
+        
+        if (updatedUsers.length === 0) {
+          // If no users left, delete the document
+          await deleteDoc(interestRef);
+        } else {
+          // Update with remaining users
+          await setDoc(interestRef, {
+            listingId,
+            interestedUsers: updatedUsers,
+            lastUpdated: new Date(),
+          });
+        }
+
+        setIsInterested(false);
+        toast({
+          title: "Interest removed",
+          description: "You are no longer interested in sharing this listing.",
+        });
+      }
+    } catch (error) {
+      console.error('Error removing interest:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove interest. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -258,11 +495,30 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
           {/* Distance Section */}
           {isCalculating ? (
             <div className="rounded-xl border bg-muted/50 p-4">
-              <div className="flex items-center space-x-3">
-                <div className="animate-spin">
-                  <MapPin className="h-5 w-5 text-muted-foreground" />
+              <div className="flex items-center justify-center space-x-3">
+                <div className="animate-spin h-5 w-5 text-primary">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    className="animate-spin"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
                 </div>
-                <p className="font-medium">Calculating commute times...</p>
+                <p className="font-medium text-sm">Calculating commute times...</p>
               </div>
             </div>
           ) : distanceInfo ? (
@@ -273,31 +529,47 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
               </div>
               
               <div className="grid gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-background">
-                    <Car className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">By Car</p>
-                    <div className="space-y-0.5 text-sm text-muted-foreground">
-                      <p>Distance: {distanceInfo.driving.distance.text}</p>
-                      <p>Duration: {distanceInfo.driving.duration.text}</p>
+                {distanceInfo.driving && (
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-background">
+                      <Car className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm">By Car</p>
+                      <div className="space-y-0.5 text-sm text-muted-foreground">
+                        <p>Distance: {distanceInfo.driving.distance.text}</p>
+                        <p>Duration: {distanceInfo.driving.duration.text}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-background">
-                    <Train className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-medium text-sm">By Transit</p>
-                    <div className="space-y-0.5 text-sm text-muted-foreground">
-                      <p>Distance: {distanceInfo.transit.distance.text}</p>
-                      <p>Duration: {distanceInfo.transit.duration.text}</p>
+                {distanceInfo.transit && distanceInfo.transit.distance && distanceInfo.transit.duration && (
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-background">
+                      <Train className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm">By Transit</p>
+                      <div className="space-y-0.5 text-sm text-muted-foreground">
+                        <p>Distance: {distanceInfo.transit.distance.text}</p>
+                        <p>Duration: {distanceInfo.transit.duration.text}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {!distanceInfo.transit && (
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-background">
+                      <Train className="h-5 w-5 text-muted" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm text-muted-foreground">Public Transit</p>
+                      <p className="text-sm text-muted-foreground">Not available for this location</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -316,16 +588,35 @@ export function ListingCard({ listing, userOfficeLocation }: ListingCardProps) {
             </Button>
           )}
 
-          {/* View on Airbnb */}
-          <Button 
-            variant="outline" 
-            className="w-full"
-            onClick={() => window.open(listing.url, '_blank')}
-          >
-            View on Airbnb
-          </Button>
+          {/* View on Airbnb and Share Housing buttons */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              className="flex-1"
+              onClick={() => window.open(listing.url, '_blank')}
+            >
+              View on Airbnb
+            </Button>
+            <Button
+              variant="default"
+              className="flex-1"
+              onClick={() => setShowUsersModal(true)}
+            >
+              {interestedUsers?.length > 0 ? `${interestedUsers.length} Interested` : 'Share Housing'}
+            </Button>
+          </div>
         </div>
       </div>
+
+      {/* Interested Users Modal */}
+      <InterestedUsersModal
+        isOpen={showUsersModal}
+        onClose={() => setShowUsersModal(false)}
+        interestedUsers={interestedUsers}
+        isInterested={isInterested}
+        onExpressInterest={handleExpressInterest}
+        onRemoveInterest={handleRemoveInterest}
+      />
     </Card>
   );
 } 

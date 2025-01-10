@@ -25,10 +25,17 @@ export default function SavedListingsPage() {
         const listingsRef = collection(db, 'starredListings', user.uid, 'listings');
         const listingsSnapshot = await getDocs(listingsRef);
         
-        const savedListings = listingsSnapshot.docs.map(doc => ({
-          ...doc.data(),
-          starredAt: doc.data().starredAt?.toDate(),
-        })) as StarredListing[];
+        const savedListings = listingsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            ...data,
+            starredAt: data.starredAt?.toDate(),
+            commuteInfo: data.commuteInfo ? {
+              ...data.commuteInfo,
+              calculatedAt: data.commuteInfo.calculatedAt.toDate()
+            } : undefined
+          } as StarredListing;
+        });
 
         // Sort by most recently starred
         savedListings.sort((a, b) => b.starredAt.getTime() - a.starredAt.getTime());
@@ -107,6 +114,7 @@ export default function SavedListingsPage() {
           <ListingCard
             key={listing.listingId}
             listing={listing}
+            savedCommuteInfo={listing.commuteInfo}
           />
         ))}
       </div>
