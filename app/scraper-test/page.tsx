@@ -3,155 +3,124 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrapedListing } from '@/lib/types';
-import { useToast } from '@/hooks/use-toast';
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
 
-export default function ScraperTest() {
-  const [url, setUrl] = useState('');
-  const [listings, setListings] = useState<ScrapedListing[]>([]);
-  const [singleListing, setSingleListing] = useState<ScrapedListing | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<'search' | 'single'>('search');
-  const { toast } = useToast();
+export default function ScraperTestPage() {
+    const [setupResult, setSetupResult] = useState<any>(null);
+    const [scrapeResult, setScrapeResult] = useState<any>(null);
+    const [searchUrl, setSearchUrl] = useState('');
+    const [loading, setLoading] = useState({
+        setup: false,
+        scrape: false
+    });
+    const [error, setError] = useState<string | null>(null);
 
-  const handleScrape = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/scrape', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url, mode }),
-      });
+    const testSetup = async () => {
+        setLoading(prev => ({ ...prev, setup: true }));
+        setError(null);
+        try {
+            const response = await fetch('/api/scrape-test');
+            const data = await response.json();
+            setSetupResult(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to test setup');
+        } finally {
+            setLoading(prev => ({ ...prev, setup: false }));
+        }
+    };
 
-      const result = await response.json();
+    const testScrape = async () => {
+        if (!searchUrl) {
+            setError('Please enter a search URL');
+            return;
+        }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to scrape data');
-      }
+        setLoading(prev => ({ ...prev, scrape: true }));
+        setError(null);
+        try {
+            const response = await fetch('/api/scrape', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    url: searchUrl,
+                    mode: 'search'
+                }),
+            });
+            const data = await response.json();
+            setScrapeResult(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to scrape');
+        } finally {
+            setLoading(prev => ({ ...prev, scrape: false }));
+        }
+    };
 
-      if (mode === 'search') {
-        setListings(result.data);
-        setSingleListing(null);
-      } else {
-        setSingleListing(result.data);
-        setListings([]);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to scrape data. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    return (
+        <div className="container mx-auto py-8 space-y-8">
+            <h1 className="text-2xl font-bold mb-4">Scraper Test Page</h1>
 
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Airbnb Scraper Test</h1>
-      
-      <Tabs value={mode} onValueChange={(value) => setMode(value as 'search' | 'single')} className="mb-6">
-        <TabsList>
-          <TabsTrigger value="search">Search Results</TabsTrigger>
-          <TabsTrigger value="single">Single Listing</TabsTrigger>
-        </TabsList>
-      </Tabs>
+            {error && (
+                <Alert variant="destructive">
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{error}</AlertDescription>
+                </Alert>
+            )}
 
-      <div className="flex gap-2 mb-8">
-        <Input
-          placeholder={mode === 'search' ? "Enter Airbnb search URL..." : "Enter Airbnb listing URL..."}
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="flex-1"
-        />
-        <Button onClick={handleScrape} disabled={loading}>
-          {loading ? 'Scraping...' : 'Scrape'}
-        </Button>
-      </div>
-
-      {singleListing && (
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle>{singleListing.title}</CardTitle>
-            <p className="text-sm text-gray-500">{singleListing.location}</p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              {singleListing.images.slice(0, 4).map((img, i) => (
-                <img
-                  key={i}
-                  src={img}
-                  alt={`${singleListing.title} - Image ${i + 1}`}
-                  className="w-full h-48 object-cover rounded-md"
-                />
-              ))}
-            </div>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold">Price</h3>
-                <p>{singleListing.price.currency}{singleListing.price.amount} per {singleListing.price.period}</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Details</h3>
-                <p>{singleListing.details.guests} guests • {singleListing.details.bedrooms} bedrooms • {singleListing.details.bathrooms} bathrooms</p>
-              </div>
-              <div>
-                <h3 className="font-semibold">Amenities</h3>
-                <div className="flex flex-wrap gap-2">
-                  {singleListing.amenities.map((amenity, i) => (
-                    <span key={i} className="bg-gray-100 px-2 py-1 rounded-md text-sm">
-                      {amenity}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="font-semibold">Description</h3>
-                <p className="text-sm">{singleListing.description}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {listings.map((listing, index) => (
-          <Card key={index}>
-            <CardHeader>
-              <CardTitle className="text-lg">{listing.title}</CardTitle>
-              <p className="text-sm text-gray-500">{listing.location}</p>
-            </CardHeader>
-            <CardContent>
-              {listing.images[0] && (
-                <img
-                  src={listing.images[0]}
-                  alt={listing.title}
-                  className="w-full h-48 object-cover rounded-md mb-4"
-                />
-              )}
-              <div className="space-y-2">
-                <p className="font-semibold">
-                  {listing.price.currency}{listing.price.amount} per {listing.price.period}
-                </p>
-                <a 
-                  href={listing.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline text-sm"
+            <Card className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold">1. Test Puppeteer Setup</h2>
+                <Button 
+                    onClick={testSetup}
+                    disabled={loading.setup}
                 >
-                  View on Airbnb
-                </a>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
+                    {loading.setup && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Test Setup
+                </Button>
+
+                {setupResult && (
+                    <div className="mt-4 space-y-2">
+                        <h3 className="font-medium">Setup Test Results:</h3>
+                        <pre className="bg-gray-100 p-4 rounded-md overflow-auto max-h-60">
+                            {JSON.stringify(setupResult, null, 2)}
+                        </pre>
+                    </div>
+                )}
+            </Card>
+
+            <Card className="p-6 space-y-4">
+                <h2 className="text-xl font-semibold">2. Test Scraping</h2>
+                <div className="flex gap-4">
+                    <Input
+                        placeholder="Enter Airbnb search URL"
+                        value={searchUrl}
+                        onChange={(e) => setSearchUrl(e.target.value)}
+                        className="flex-1"
+                    />
+                    <Button 
+                        onClick={testScrape}
+                        disabled={loading.scrape}
+                    >
+                        {loading.scrape && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Test Scrape
+                    </Button>
+                </div>
+
+                <div className="text-sm text-gray-500">
+                    Example URL: https://www.airbnb.com/s/San-Francisco--California--United-States/homes
+                </div>
+
+                {scrapeResult && (
+                    <div className="mt-4 space-y-2">
+                        <h3 className="font-medium">Scrape Results:</h3>
+                        <pre className="bg-gray-100 p-4 rounded-md overflow-auto max-h-96">
+                            {JSON.stringify(scrapeResult, null, 2)}
+                        </pre>
+                    </div>
+                )}
+            </Card>
+        </div>
+    );
 } 

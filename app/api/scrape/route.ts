@@ -1,247 +1,275 @@
-import { NextResponse } from 'next/server';
+import chromium from '@sparticuz/chromium';
+import puppeteerCore, { Page, Browser } from 'puppeteer-core';
 import puppeteer from 'puppeteer';
-import * as cheerio from 'cheerio';
-import { ScrapedListing } from '@/lib/types';
+import { NextResponse } from 'next/server';
+
+interface Listing {
+    title: string;
+    price: {
+        amount: number;
+        currency: string;
+        period: string;
+    };
+    images: string[];
+    location: string | {
+        address: string;
+        city: string;
+        coordinates: {
+            latitude: number;
+            longitude: number;
+        }
+    };
+    details: {
+        bedrooms: number;
+        bathrooms: number;
+        maxGuests: number;
+    };
+    amenities: string[];
+    description: string;
+    url: string;
+    houseRules?: string[];
+    rating?: number;
+    reviewCount?: number;
+}
+
+// Common user agents
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2.1 Safari/605.1.15'
+];
+
+// Helper function to get a random user agent
+const getRandomUserAgent = () => {
+    return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+};
+
+// Helper function to add random delay
+const randomDelay = async (min = 1000, max = 3000) => {
+    const delay = Math.floor(Math.random() * (max - min + 1) + min);
+    await new Promise(resolve => setTimeout(resolve, delay));
+};
+
+// Setup browser with anti-detection measures
+async function setupBrowser(): Promise<{ browser: Browser; page: Page }> {
+    try {
+        const isDev = process.env.NODE_ENV === 'development';
+        
+        let browser: Browser;
+        if (isDev) {
+            // In development, use the system Chrome with full Puppeteer
+            browser = (await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox', '--disable-setuid-sandbox']
+            })) as unknown as Browser;
+        } else {
+            // In production (Vercel), use @sparticuz/chromium with puppeteer-core
+            await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
+            browser = await puppeteerCore.launch({
+                args: chromium.args,
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless
+            });
+        }
+
+        const page = await browser.newPage() as Page;
+        
+        // Set a random user agent
+        await page.setUserAgent(getRandomUserAgent());
+        
+        // Set extra headers to look more like a real browser
+        await page.setExtraHTTPHeaders({
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1'
+        });
+
+        return { browser, page };
+    } catch (error) {
+        console.error('Error setting up browser:', error);
+        throw error;
+    }
+}
+
+async function scrapeSearchResults(page: Page): Promise<Listing[]> {
+    await page.waitForSelector('[data-testid="card-container"]', { timeout: 10000 });
+    
+    return await page.evaluate(() => {
+        const listings: Listing[] = [];
+        const cards = document.querySelectorAll('[data-testid="card-container"]');
+        
+        cards.forEach(card => {
+            const title = card.querySelector('[id^="title_"]')?.textContent?.trim() || '';
+            const priceEl = card.querySelector('._1jo4hgw, span[data-testid="price-and-discounted-price"]');
+            const priceText = priceEl?.textContent || '';
+            const priceMatch = priceText.match(/\$(\d+)/);
+            const price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
+            
+            const href = card.querySelector('a[href^="/rooms/"]')?.getAttribute('href') || '';
+            const url = href.startsWith('http') ? href : `https://www.airbnb.com${href}`;
+            
+            const images = Array.from(card.querySelectorAll('img'))
+                .map(img => img.getAttribute('src'))
+                .filter((src): src is string => 
+                    typeof src === 'string' && 
+                    !src.includes('profile') && 
+                    !src.includes('user')
+                );
+            
+            const location = card.querySelector('.t1jojoys')?.textContent?.trim() || '';
+            
+            if (title) {
+                listings.push({
+                    title,
+                    price: {
+                        amount: price,
+                        currency: 'USD',
+                        period: 'night'
+                    },
+                    images,
+                    location,
+                    url,
+                    details: {
+                        bedrooms: 0,
+                        bathrooms: 0,
+                        maxGuests: 0
+                    },
+                    amenities: [],
+                    description: ''
+                });
+            }
+        });
+        
+        return listings;
+    });
+}
+
+async function scrapeSingleListing(page: Page): Promise<Listing> {
+    return await page.evaluate(() => {
+        const getTextContent = (selector: string) => {
+            const element = document.querySelector(selector);
+            return element?.textContent?.trim() || '';
+        };
+
+        const priceElement = document.querySelector('[data-testid="price-element"]');
+        const priceText = priceElement?.textContent || '';
+        const priceMatch = priceText.match(/\$(\d+)/);
+        const price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
+
+        const latitudeMeta = document.querySelector('meta[property="place:location:latitude"]');
+        const longitudeMeta = document.querySelector('meta[property="place:location:longitude"]');
+        const latitude = latitudeMeta ? parseFloat(latitudeMeta.getAttribute('content') || '0') : 0;
+        const longitude = longitudeMeta ? parseFloat(longitudeMeta.getAttribute('content') || '0') : 0;
+
+        const imageElements = document.querySelectorAll('img[data-original]');
+        const images = Array.from(imageElements)
+            .map(img => img.getAttribute('data-original'))
+            .filter((src): src is string => typeof src === 'string');
+
+        const amenityElements = document.querySelectorAll('[data-testid="amenity-row"]');
+        const amenities = Array.from(amenityElements)
+            .map(el => el.textContent?.trim())
+            .filter((text): text is string => typeof text === 'string');
+
+        const houseRules = Array.from(document.querySelectorAll('[data-testid="house-rules"] li'))
+            .map(el => el.textContent?.trim())
+            .filter((text): text is string => typeof text === 'string');
+
+        return {
+            title: getTextContent('[data-testid="listing-title"]'),
+            location: {
+                address: getTextContent('[data-testid="listing-address"]'),
+                city: getTextContent('[data-testid="listing-city"]'),
+                coordinates: { latitude, longitude }
+            },
+            price: {
+                amount: price,
+                currency: 'USD',
+                period: 'night'
+            },
+            details: {
+                bedrooms: parseInt(getTextContent('[data-testid="listing-bedrooms"]') || '0', 10),
+                bathrooms: parseInt(getTextContent('[data-testid="listing-bathrooms"]') || '0', 10),
+                maxGuests: parseInt(getTextContent('[data-testid="listing-guests"]') || '0', 10)
+            },
+            amenities,
+            images,
+            description: getTextContent('[data-testid="listing-description"]'),
+            houseRules,
+            rating: parseFloat(getTextContent('[data-testid="listing-rating"]') || '0'),
+            reviewCount: parseInt(getTextContent('[data-testid="listing-reviews-count"]') || '0', 10),
+            url: window.location.href
+        };
+    });
+}
 
 export async function POST(req: Request) {
-  try {
-    const { url, mode } = await req.json();
-
-    if (mode === 'single') {
-      const listing = await scrapeAirbnbListing(url);
-      return NextResponse.json({ success: true, data: listing });
-    } else {
-      const listings = await scrapeAirbnbListings(url);
-      return NextResponse.json({ success: true, data: listings });
-    }
-  } catch (error) {
-    console.error('Scraping error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to scrape data' },
-      { status: 500 }
-    );
-  }
-}
-
-async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]> {
-  const browser = await puppeteer.launch({
-    headless: true
-  });
-
-  try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-    await page.goto(searchUrl, { 
-      waitUntil: 'networkidle0',
-      timeout: 30000
-    });
-
-    // Wait for listings to load
-    await page.waitForSelector('[data-testid="card-container"]', { timeout: 10000 });
-
-    const html = await page.content();
-    const $ = cheerio.load(html);
-    const listings: ScrapedListing[] = [];
-
-    // Process each listing card
-    $('[data-testid="card-container"]').each((_, card) => {
-      const $card = $(card);
-      
-      // Get title and location
-      const title = $card.find('[id^="title_"]').text().trim() || 'Unnamed Property';
-      const location = $card.find('.t1jojoys').text().trim();
-      
-      // Get URL
-      const href = $card.find('a[href^="/rooms/"]').first().attr('href') || '';
-      const listingUrl = href.startsWith('http') ? href : `https://www.airbnb.com${href}`;
-      
-      // Get price and discount information
-      const priceText = $card.find('._1jo4hgw').text() || 
-                       $card.find('span[data-testid="price-and-discounted-price"]').text();
-      
-      let amount = 0;
-      let currency = '$';
-      let originalAmount: number | undefined;
-      let discountPercentage: number | undefined;
-      let period = 'night';
-
-      // Check for monthly price indicator
-      const isMonthly = priceText.toLowerCase().includes('month') || 
-                       priceText.toLowerCase().includes('mo');
-      if (isMonthly) {
-        period = 'month';
-      }
-
-      // Check for discounted price
-      const discountedPriceEl = $card.find('span[data-testid="price-and-discounted-price"]');
-      if (discountedPriceEl.length) {
-        // Look for original price (strikethrough)
-        const originalPriceText = $card.find('span[data-testid="strikethrough-price"]').text();
-        if (originalPriceText) {
-          const originalMatch = originalPriceText.match(/([₹$€£¥])\s*(\d+(?:,\d{3})*)/);
-          if (originalMatch) {
-            currency = originalMatch[1];
-            originalAmount = parseFloat(originalMatch[2].replace(/,/g, ''));
-          }
+    let browser;
+    try {
+        const { url, mode = 'single' } = await req.json();
+        
+        if (!url) {
+            return NextResponse.json({ error: 'URL is required' }, { status: 400 });
         }
 
-        // Get discounted price
-        const priceMatch = priceText.match(/([₹$€£¥])\s*(\d+(?:,\d{3})*)/);
-        if (priceMatch) {
-          currency = priceMatch[1];
-          amount = parseFloat(priceMatch[2].replace(/,/g, ''));
-        }
+        const { browser: _browser, page } = await setupBrowser();
+        browser = _browser;
 
-        // Calculate discount percentage if we have both prices
-        if (originalAmount && amount) {
-          discountPercentage = Math.round(((originalAmount - amount) / originalAmount) * 100);
-        }
-      } else {
-        // Regular price without discount
-        const priceMatch = priceText.match(/([₹$€£¥])\s*(\d+(?:,\d{3})*)/);
-        if (priceMatch) {
-          currency = priceMatch[1];
-          amount = parseFloat(priceMatch[2].replace(/,/g, ''));
-        }
-      }
-
-      // Get images - specifically target listing images and filter out profile pictures
-      const images = $card.find('img')
-        .filter((_, img) => {
-          const $img = $(img);
-          const src = $img.attr('src') || '';
-          const alt = $img.attr('alt') || '';
-          const parentHtml = $img.parent().html() || '';
-
-          // Skip host avatars and profile pictures
-          if (
-            alt.toLowerCase().includes('profile') ||
-            src.includes('User/original') ||
-            src.includes('pictures/user/') ||
-            parentHtml.includes('Host preview') ||
-            parentHtml.includes('aria-label="Host"')
-          ) {
-            return false;
-          }
-
-          // Keep the image if it's a listing image
-          return true;
-        })
-        .map((_, img) => $(img).attr('src'))
-        .get()
-        .filter(Boolean);
-
-      // Get rating
-      const ratingText = $card.find('[aria-label*="out of 5"], [aria-label*="rating"], .t5eq1io').text();
-      let rating: string | undefined;
-      const ratingMatch = ratingText.match(/([\d.]+)/);
-      if (ratingMatch) {
-        rating = ratingMatch[1];
-      }
-
-      // Only add listing if we have the title
-      if (title) {
-        listings.push({
-          title,
-          price: {
-            amount,
-            currency,
-            period,
-            originalAmount,
-            discountPercentage
-          },
-          images,
-          location,
-          details: {
-            bedrooms: 0,
-            bathrooms: 0,
-            guests: 0
-          },
-          amenities: [],
-          description: '',
-          url: listingUrl,
-          rating
+        await page.goto(url, {
+            waitUntil: 'networkidle0',
+            timeout: 30000
         });
-      }
-    });
 
-    return listings;
+        // Random scrolling
+        await page.evaluate(async () => {
+            const randomScroll = () => {
+                window.scrollBy(0, Math.random() * 100);
+            };
+            for (let i = 0; i < 5; i++) {
+                randomScroll();
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
+            }
+        });
 
-  } catch (error) {
-    console.error('Error scraping Airbnb listings:', error);
-    return [];
-  } finally {
-    await browser.close();
-  }
-}
+        await randomDelay(500, 1500);
 
-// Single listing scraper (if needed)
-async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
-  const browser = await puppeteer.launch({
-    headless: true
-  });
+        let result;
+        if (mode === 'search') {
+            result = await scrapeSearchResults(page);
+            return NextResponse.json({ 
+                success: true,
+                data: result
+            });
+        } else {
+            result = await scrapeSingleListing(page);
+            const id = url.split('/rooms/')[1]?.split('?')[0] || '';
+            return NextResponse.json({ 
+                success: true,
+                data: {
+                    ...result,
+                    id,
+                    scrapedAt: new Date().toISOString()
+                }
+            });
+        }
 
-  try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 800 });
-    await page.goto(url, { waitUntil: 'networkidle0' });
-
-    const html = await page.content();
-    const $ = cheerio.load(html);
-
-    const title = $('meta[itemprop="name"]').attr('content') || 
-                 $('[data-testid="listing-card-title"]').text() ||
-                 'Unnamed Property';
-                 
-    const priceText = $('span[data-testid="price-and-discounted-price"]').text() ||
-                     $('._1jo4hgw').text();
-    
-    let amount = 0;
-    let currency = '$';
-    const priceMatch = priceText.match(/([₹$€£¥])\s*(\d+)/);
-    if (priceMatch) {
-      currency = priceMatch[1];
-      amount = parseFloat(priceMatch[2]);
+    } catch (error) {
+        console.error('Error scraping:', error);
+        return NextResponse.json({ 
+            success: false, 
+            error: 'Failed to scrape data' 
+        }, { status: 500 });
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
     }
-
-    const images = $('img[data-testid="card-image"], .i1ezuexe')
-      .map((_, el) => $(el).attr('src'))
-      .get()
-      .filter(Boolean);
-
-    const location = $('[data-testid="listing-card-title"]').text() ||
-                    $('[data-testid="listing-card-subtitle"]').first().text();
-
-    const detailsText = $('.fb4nyux').text();
-    const bedroomsMatch = detailsText.match(/(\d+)\s*bed/);
-
-    const ratingText = $('.r4a59j5').text();
-    let rating: string | undefined;
-    const ratingMatch = ratingText.match(/([\d.]+)/);
-    if (ratingMatch) {
-      rating = ratingMatch[1];
-    }
-
-    return {
-      title,
-      price: {
-        amount,
-        currency,
-        period: 'night'
-      },
-      images,
-      location,
-      details: {
-        bedrooms: bedroomsMatch ? parseInt(bedroomsMatch[1]) : 0,
-        bathrooms: 0,
-        guests: 0
-      },
-      amenities: [],
-      description: '',
-      url,
-      rating
-    };
-  } finally {
-    await browser.close();
-  }
 } 
