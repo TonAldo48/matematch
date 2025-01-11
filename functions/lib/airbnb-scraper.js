@@ -3,17 +3,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.scrapeAirbnb = exports.scrapeAirbnbSearch = exports.scrapeAirbnbListing = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const puppeteer_1 = require("puppeteer");
+const puppeteer_1 = require("puppeteer-core");
 const scrapeAirbnbListing = async (url) => {
     var _a;
-    const browser = await puppeteer_1.default.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    const browser = await puppeteer_1.default.connect({
+        browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`,
+        defaultViewport: { width: 1920, height: 1080 }
     });
     try {
         const page = await browser.newPage();
-        await page.setViewport({ width: 1280, height: 800 });
-        await page.goto(url, { waitUntil: 'networkidle0' });
+        await page.setDefaultNavigationTimeout(60000);
+        await page.setDefaultTimeout(60000);
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        await page.goto(url, { waitUntil: 'networkidle0', timeout: 60000 });
         // Extract listing data
         const listing = await page.evaluate(() => {
             // Helper function to safely query selectors

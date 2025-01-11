@@ -32,18 +32,14 @@ const nextConfig = {
   },
   serverRuntimeConfig: {
     timeoutMs: 60000,
+    maxDuration: 60
   },
   compress: true,
   experimental: {
     serverActions: {
       bodySizeLimit: '10mb',
     },
-  },
-  functions: {
-    'api/**/*.ts': {
-      maxDuration: 60,
-    },
-  },
+  }
 }
 
 module.exports = nextConfig 
