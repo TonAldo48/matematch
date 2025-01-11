@@ -6,32 +6,49 @@ import { ScrapedListing } from '@/lib/types';
 export async function POST(req: Request) {
   try {
     const { url, mode } = await req.json();
+    console.log(`Starting scrape request - Mode: ${mode}, URL: ${url}`);
 
     if (mode === 'single') {
+      console.log('Starting single listing scrape...');
       const listing = await scrapeAirbnbListing(url);
+      console.log('Single listing scrape completed successfully');
       return NextResponse.json({ success: true, data: listing });
     } else {
+      console.log('Starting listings scrape...');
       const listings = await scrapeAirbnbListings(url);
+      console.log('Listings scrape completed successfully');
       return NextResponse.json({ success: true, data: listings });
     }
-  } catch (error) {
-    console.error('Scraping error:', error);
+  } catch (error: any) {
+    console.error('Scraping error details:', {
+      message: error?.message || 'Unknown error',
+      stack: error?.stack || 'No stack trace',
+      name: error?.name || 'Unknown error type'
+    });
     return NextResponse.json(
-      { success: false, error: 'Failed to scrape data' },
+      { 
+        success: false, 
+        error: 'Failed to scrape data', 
+        details: error?.message || 'Unknown error'
+      },
       { status: 500 }
     );
   }
 }
 
 async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]> {
+  console.log('Attempting to connect to browserless.io...');
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
     browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
   });
+  console.log('Successfully connected to browserless.io');
 
   try {
+    console.log('Creating new page...');
     const page = await browser.newPage();
+    console.log('Page created successfully');
     await page.setViewport({ width: 1280, height: 800 });
     await page.goto(searchUrl, { 
       waitUntil: 'networkidle0',
@@ -179,14 +196,18 @@ async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]
 
 // Single listing scraper (if needed)
 async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
+  console.log('Attempting to connect to browserless.io for single listing...');
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
     browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
   });
+  console.log('Successfully connected to browserless.io for single listing');
 
   try {
+    console.log('Creating new page for single listing...');
     const page = await browser.newPage();
+    console.log('Page created successfully for single listing');
     await page.setViewport({ width: 1280, height: 800 });
     await page.goto(url, { waitUntil: 'networkidle0' });
 
