@@ -22,7 +22,8 @@ export interface ScrapedListing {
 
 export async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
   const browser = await puppeteer.launch({
-    headless: "new"
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   })
 
   try {
@@ -81,7 +82,8 @@ export async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> 
 // Function to scrape multiple listings from search results
 export async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]> {
   const browser = await puppeteer.launch({
-    headless: "new"
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
   })
 
   try {
