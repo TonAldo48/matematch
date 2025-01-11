@@ -113,12 +113,6 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
     { name: 'Scraper Test', href: '/scraper-test', icon: Search },
   ];
 
-  const secondaryNavigation = [
-    { name: 'History', href: '/history', icon: History },
-    { name: 'Starred', href: '/starred', icon: Star },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ];
-
   const SidebarContent = () => (
     <div className={cn("flex h-full flex-col border-r bg-muted/10", collapsed ? "w-16" : "w-64")}>
       {/* Header */}
@@ -207,42 +201,6 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
           )}
           <nav className="space-y-1">
             {toolsNavigation.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "group flex items-center rounded-md px-3 py-2 text-sm font-medium",
-                    isActive
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  )}
-                  title={collapsed ? item.name : undefined}
-                >
-                  <Icon
-                    className={cn(
-                      "h-4 w-4 flex-shrink-0",
-                      isActive ? "text-foreground" : "text-muted-foreground group-hover:text-accent-foreground",
-                      collapsed ? "mr-0" : "mr-3"
-                    )}
-                  />
-                  {!collapsed && item.name}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="space-y-1">
-          {!collapsed && (
-            <h2 className="px-2 text-xs font-semibold text-muted-foreground">
-              Workspace
-            </h2>
-          )}
-          <nav className="space-y-1">
-            {secondaryNavigation.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
               return (
