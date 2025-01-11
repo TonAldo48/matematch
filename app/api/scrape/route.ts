@@ -3,6 +3,10 @@ import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 import { ScrapedListing } from '@/lib/types';
 
+// Configure the API route
+export const runtime = 'nodejs'; // Specify Node.js runtime instead of Edge
+export const maxDuration = 300; // Set maximum duration to 300 seconds (5 minutes)
+
 export async function POST(req: Request) {
   try {
     const { url, mode } = await req.json();
