@@ -3,10 +3,6 @@ import puppeteer from 'puppeteer';
 import * as cheerio from 'cheerio';
 import { ScrapedListing } from '@/lib/types';
 
-// Configure the API route
-export const runtime = 'nodejs'; // Specify Node.js runtime instead of Edge
-export const maxDuration = 300; // Set maximum duration to 300 seconds (5 minutes)
-
 export async function POST(req: Request) {
   try {
     const { url, mode } = await req.json();
@@ -45,7 +41,8 @@ async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
+    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`,
+    timeout: 60000
   });
   console.log('Successfully connected to browserless.io');
 
@@ -54,9 +51,11 @@ async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]
     const page = await browser.newPage();
     console.log('Page created successfully');
     await page.setViewport({ width: 1280, height: 800 });
+    await page.setDefaultNavigationTimeout(60000);
+    await page.setDefaultTimeout(60000);
     await page.goto(searchUrl, { 
       waitUntil: 'networkidle0',
-      timeout: 30000
+      timeout: 60000
     });
 
     // Wait for listings to load
@@ -204,7 +203,8 @@ async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
+    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`,
+    timeout: 60000
   });
   console.log('Successfully connected to browserless.io for single listing');
 
@@ -213,7 +213,12 @@ async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
     const page = await browser.newPage();
     console.log('Page created successfully for single listing');
     await page.setViewport({ width: 1280, height: 800 });
-    await page.goto(url, { waitUntil: 'networkidle0' });
+    await page.setDefaultNavigationTimeout(60000);
+    await page.setDefaultTimeout(60000);
+    await page.goto(url, { 
+      waitUntil: 'networkidle0',
+      timeout: 60000
+    });
 
     const html = await page.content();
     const $ = cheerio.load(html);
