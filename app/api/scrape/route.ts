@@ -58,13 +58,11 @@ async function setupBrowser(): Promise<{ browser: Browser; page: Page }> {
         
         let browser: Browser;
         if (isDev) {
-            // In development, use the system Chrome with full Puppeteer
             browser = (await puppeteer.launch({
                 headless: true,
                 args: ['--no-sandbox', '--disable-setuid-sandbox']
             })) as unknown as Browser;
         } else {
-            // In production (Vercel), use @sparticuz/chromium with puppeteer-core
             await chromium.font('https://raw.githack.com/googlei18n/noto-emoji/master/fonts/NotoColorEmoji.ttf');
             browser = await puppeteerCore.launch({
                 args: chromium.args,
@@ -78,6 +76,33 @@ async function setupBrowser(): Promise<{ browser: Browser; page: Page }> {
         
         // Set a random user agent
         await page.setUserAgent(getRandomUserAgent());
+        
+        // Block unnecessary resources to speed up loading
+        await page.setRequestInterception(true);
+        page.on('request', (request) => {
+            const blockedResourceTypes = [
+                'image',
+                'media',
+                'font',
+                'texttrack',
+                'object',
+                'beacon',
+                'csp_report',
+                'imageset',
+            ];
+            
+            if (
+                blockedResourceTypes.includes(request.resourceType()) ||
+                request.url().includes('google-analytics') ||
+                request.url().includes('doubleclick.net') ||
+                request.url().includes('google-tag') ||
+                request.url().includes('optimizely')
+            ) {
+                request.abort();
+            } else {
+                request.continue();
+            }
+        });
         
         // Set extra headers to look more like a real browser
         await page.setExtraHTTPHeaders({
@@ -223,49 +248,47 @@ export async function POST(req: Request) {
         const { browser: _browser, page } = await setupBrowser();
         browser = _browser;
 
+        console.log('Navigating to:', url);
         await page.goto(url, {
             waitUntil: 'networkidle0',
-            timeout: 30000
+            timeout: 60000 // Increased timeout to 60 seconds
         });
 
-        // Random scrolling
+        // Random scrolling with increased delay
         await page.evaluate(async () => {
             const randomScroll = () => {
                 window.scrollBy(0, Math.random() * 100);
             };
             for (let i = 0; i < 5; i++) {
                 randomScroll();
-                await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
+                await new Promise(resolve => setTimeout(resolve, Math.random() * 2000));
             }
         });
 
-        await randomDelay(500, 1500);
+        await randomDelay(1000, 3000);
 
         let result;
         if (mode === 'search') {
             result = await scrapeSearchResults(page);
-            return NextResponse.json({ 
-                success: true,
-                data: result
-            });
         } else {
             result = await scrapeSingleListing(page);
-            const id = url.split('/rooms/')[1]?.split('?')[0] || '';
-            return NextResponse.json({ 
-                success: true,
-                data: {
-                    ...result,
-                    id,
-                    scrapedAt: new Date().toISOString()
-                }
-            });
         }
+
+        return NextResponse.json({ 
+            success: true,
+            data: mode === 'search' ? result : {
+                ...result,
+                id: url.split('/rooms/')[1]?.split('?')[0] || '',
+                scrapedAt: new Date().toISOString()
+            }
+        });
 
     } catch (error) {
         console.error('Error scraping:', error);
         return NextResponse.json({ 
             success: false, 
-            error: 'Failed to scrape data' 
+            error: error instanceof Error ? error.message : 'Failed to scrape data',
+            url: req.url
         }, { status: 500 });
     } finally {
         if (browser) {

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import Image from 'next/image';
 
 interface DistanceInfo {
   driving: {
@@ -454,10 +455,11 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
             <Dialog>
               <DialogTrigger asChild>
                 <button className="w-full h-full relative group">
-                  <img
+                  <Image
                     src={listing.images[0]}
                     alt={listing.title}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <Maximize2 className="w-6 h-6 text-white" />
@@ -466,10 +468,11 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
               </DialogTrigger>
               <DialogContent className="max-w-4xl">
                 <div className="aspect-video relative overflow-hidden rounded-lg">
-                  <img
+                  <Image
                     src={listing.images[0]}
                     alt={listing.title}
-                    className="w-full h-full object-contain"
+                    fill
+                    className="object-contain"
                   />
                 </div>
               </DialogContent>

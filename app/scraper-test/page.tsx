@@ -22,10 +22,15 @@ export default function ScraperTestPage() {
         setError(null);
         try {
             const response = await fetch('/api/scrape-test');
+            if (!response.ok) {
+                throw new Error('Failed to test setup');
+            }
             const data = await response.json();
             setSetupResult(data);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to test setup');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to test setup';
+            setError(errorMessage);
+            console.error('Setup error:', errorMessage);
         } finally {
             setLoading(prev => ({ ...prev, setup: false }));
         }
@@ -50,10 +55,15 @@ export default function ScraperTestPage() {
                     mode: 'search'
                 }),
             });
+            if (!response.ok) {
+                throw new Error('Failed to scrape');
+            }
             const data = await response.json();
             setScrapeResult(data);
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to scrape');
+            const errorMessage = err instanceof Error ? err.message : 'Failed to scrape';
+            setError(errorMessage);
+            console.error('Scrape error:', errorMessage);
         } finally {
             setLoading(prev => ({ ...prev, scrape: false }));
         }

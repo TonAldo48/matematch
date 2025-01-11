@@ -193,6 +193,9 @@ export default function HousingPage() {
             loading={loading}
             userOfficeLocation={userOfficeLocation}
           />
+          <p className="text-muted-foreground">
+            You have saved {listings.length} listing{listings.length !== 1 ? "'s" : ''}
+          </p>
         </div>
       </div>
     </div>

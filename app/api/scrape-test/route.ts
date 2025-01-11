@@ -1,21 +1,20 @@
-import chromium from '@sparticuz/chromium';
 import puppeteerCore from 'puppeteer-core';
 import { NextResponse } from 'next/server';
+import { getPuppeteerConfig } from '@/lib/config/puppeteer';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     let browser;
     try {
-        // Test chromium setup
-        const executablePath = await chromium.executablePath();
-        console.log('Chromium executable path:', executablePath);
+        const isDev = process.env.NODE_ENV === 'development';
+        const config = await getPuppeteerConfig(isDev);
 
-        // Test browser launch
-        browser = await puppeteerCore.launch({
-            args: chromium.args,
-            defaultViewport: chromium.defaultViewport,
-            executablePath,
-            headless: chromium.headless
-        });
+        // Launch browser with appropriate configuration
+        browser = isDev 
+            ? await import('puppeteer').then(puppeteer => puppeteer.default.launch(config))
+            : await puppeteerCore.launch(config);
+
         console.log('Browser launched successfully');
 
         // Test page creation
@@ -33,11 +32,7 @@ export async function GET() {
         return NextResponse.json({ 
             success: true,
             environment: process.env.NODE_ENV,
-            chromium: {
-                executablePath,
-                args: chromium.args,
-                headless: chromium.headless
-            },
+            config,
             test: {
                 title
             }
@@ -47,12 +42,7 @@ export async function GET() {
         return NextResponse.json({ 
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-            environment: process.env.NODE_ENV,
-            chromium: {
-                executablePath: await chromium.executablePath(),
-                args: chromium.args,
-                headless: chromium.headless
-            }
+            environment: process.env.NODE_ENV
         }, { status: 500 });
     } finally {
         if (browser) {
