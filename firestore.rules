@@ -12,10 +12,12 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Listings collection group rules
+    // Allow access to all listings via collection group query
     match /{path=**}/listings/{listingId} {
       allow read: if isAuthenticated();
-      allow write: if isOwner(request.resource.data.userId);
+      allow create: if isAuthenticated();
+      allow update: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId);
     }
 
     // Listing interests rules

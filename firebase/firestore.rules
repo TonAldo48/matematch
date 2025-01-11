@@ -11,6 +11,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Allow access to all listings via collection group query
+    match /{path=**}/listings/{listingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isOwner(resource.data.userId);
+      allow delete: if isOwner(resource.data.userId);
+    }
+
     // Profiles collection rules
     match /profiles/{userId} {
       allow read: if isSignedIn();
@@ -28,6 +36,56 @@ service cloud.firestore {
           && request.resource.data.userId == userId
           && request.resource.data.listingId == listingId;
         allow delete: if isOwner(userId);
+      }
+    }
+
+    // Listing interests rules
+    match /listingInterests/{listingId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && 
+        // Only allow updating if not changing other users' data
+        (!request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['listingId']) || resource.data.listingId == request.resource.data.listingId);
+      allow delete: if false;
+    }
+
+    // Activities collection rules
+    match /activities/{activityId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && 
+        request.resource.data.data.userId == request.auth.uid &&
+        request.resource.data.type in ['new_listing', 'expressed_interest', 'new_roommate', 'starred_listing'];
+      allow delete: if isSignedIn() && 
+        resource.data.data.userId == request.auth.uid;
+      
+      // Comments on activities
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      }
+      
+      // Likes on activities
+      match /likes/{userId} {
+        allow read: if isSignedIn();
+        allow write: if isSignedIn() && userId == request.auth.uid;
+      }
+    }
+
+    // User interactions (likes, shares, saves)
+    match /userInteractions/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+      
+      match /likes/{activityId} {
+        allow read: if isSignedIn();
+        allow write: if isOwner(userId);
+      }
+      
+      match /saves/{activityId} {
+        allow read: if isOwner(userId);
+        allow write: if isOwner(userId);
       }
     }
   }
