@@ -1,4 +1,3 @@
-import puppeteer from 'puppeteer'
 import * as cheerio from 'cheerio'
 
 export interface ScrapedListing {
@@ -21,18 +20,12 @@ export interface ScrapedListing {
 }
 
 export async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
-  const browser = await puppeteer.launch({
-    headless: true
-  })
-
   try {
-    const page = await browser.newPage()
-    await page.goto(url, { waitUntil: 'networkidle0' })
-
-    // Wait for main content to load
-    await page.waitForSelector('[data-section-id="TITLE_DEFAULT"]')
-
-    const html = await page.content()
+    // Use a CORS proxy to fetch the page
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
+    const response = await fetch(proxyUrl)
+    const data = await response.json()
+    const html = data.contents
     const $ = cheerio.load(html)
 
     // Extract listing information
@@ -73,25 +66,19 @@ export async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> 
       description,
       url
     }
-  } finally {
-    await browser.close()
+  } catch (error) {
+    console.error('Error scraping Airbnb listing:', error)
+    throw error
   }
 }
 
-// Function to scrape multiple listings from search results
 export async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]> {
-  const browser = await puppeteer.launch({
-    headless: true
-  })
-
   try {
-    const page = await browser.newPage()
-    await page.goto(searchUrl, { waitUntil: 'networkidle0' })
-
-    // Wait for listings to load
-    await page.waitForSelector('[data-testid="card-container"]', { timeout: 10000 })
-
-    const html = await page.content()
+    // Use a CORS proxy to fetch the page
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`
+    const response = await fetch(proxyUrl)
+    const data = await response.json()
+    const html = data.contents
     const $ = cheerio.load(html)
     const listings: ScrapedListing[] = []
 
@@ -122,22 +109,19 @@ export async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedLi
         images,
         location,
         details: {
-          bedrooms: 0,  // These details are not available in search results
+          bedrooms: 0,
           bathrooms: 0,
           guests: 0
         },
-        amenities: [],  // Not available in search results
-        description: '', // Not available in search results
+        amenities: [],
+        description: '',
         url: listingUrl
       })
     })
 
     return listings
-
   } catch (error) {
     console.error('Error scraping Airbnb listings:', error)
     return []
-  } finally {
-    await browser.close()
   }
 } 
