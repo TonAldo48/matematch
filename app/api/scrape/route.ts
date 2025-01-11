@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
 import * as cheerio from 'cheerio';
 import { ScrapedListing } from '@/lib/types';
 
@@ -8,15 +8,43 @@ export async function POST(req: Request) {
     const { url, mode } = await req.json();
     console.log(`Starting scrape request - Mode: ${mode}, URL: ${url}`);
 
+    if (!url) {
+      return NextResponse.json(
+        { success: false, error: 'URL is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!url.includes('airbnb.com')) {
+      return NextResponse.json(
+        { success: false, error: 'Only Airbnb URLs are supported' },
+        { status: 400 }
+      );
+    }
+
+    if (!process.env.BROWSERLESS_API_KEY) {
+      console.error('BROWSERLESS_API_KEY is not set');
+      return NextResponse.json(
+        { success: false, error: 'Scraping service configuration error' },
+        { status: 500 }
+      );
+    }
+
     if (mode === 'single') {
       console.log('Starting single listing scrape...');
       const listing = await scrapeAirbnbListing(url);
+      if (!listing) {
+        throw new Error('Failed to scrape listing');
+      }
       console.log('Single listing scrape completed successfully');
       return NextResponse.json({ success: true, data: listing });
     } else {
       console.log('Starting listings scrape...');
       const listings = await scrapeAirbnbListings(url);
-      console.log('Listings scrape completed successfully');
+      if (!listings || listings.length === 0) {
+        throw new Error('No listings found');
+      }
+      console.log(`Listings scrape completed successfully. Found ${listings.length} listings`);
       return NextResponse.json({ success: true, data: listings });
     }
   } catch (error: any) {
@@ -25,6 +53,19 @@ export async function POST(req: Request) {
       stack: error?.stack || 'No stack trace',
       name: error?.name || 'Unknown error type'
     });
+    
+    // Check if error is related to browserless connection
+    if (error?.message?.includes('browserless') || error?.message?.includes('websocket')) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Failed to connect to scraping service',
+          details: error?.message
+        },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
       { 
         success: false, 
@@ -37,31 +78,62 @@ export async function POST(req: Request) {
 }
 
 async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]> {
-  console.log('Attempting to connect to browserless.io...');
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`,
-    timeout: 60000
-  });
-  console.log('Successfully connected to browserless.io');
-
+  let browser = null;
+  console.log('Starting scrapeAirbnbListings with URL:', searchUrl);
+  
   try {
+    console.log('Attempting to connect to browserless.io...');
+    browser = await puppeteer.connect({
+      browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`,
+      defaultViewport: { width: 1920, height: 1080 }
+    });
+    console.log('Successfully connected to browserless.io');
+
     console.log('Creating new page...');
     const page = await browser.newPage();
     console.log('Page created successfully');
-    await page.setViewport({ width: 1280, height: 800 });
+    
     await page.setDefaultNavigationTimeout(60000);
     await page.setDefaultTimeout(60000);
-    await page.goto(searchUrl, { 
+    
+    // Set user agent to avoid detection
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    console.log('Navigating to URL...');
+    const response = await page.goto(searchUrl, { 
       waitUntil: 'networkidle0',
       timeout: 60000
     });
+    
+    if (!response) {
+      throw new Error('Failed to get response from page');
+    }
+    
+    const status = response.status();
+    console.log('Page response status:', status);
+    
+    if (status !== 200) {
+      throw new Error(`Page returned status code ${status}`);
+    }
 
-    // Wait for listings to load
-    await page.waitForSelector('[data-testid="card-container"]', { timeout: 10000 });
+    console.log('Waiting for listings to load...');
+    try {
+      await page.waitForSelector('[data-testid="card-container"]', { 
+        timeout: 30000,
+        visible: true 
+      });
+      console.log('Listings loaded successfully');
+    } catch (error) {
+      console.error('Error waiting for listings:', error);
+      // Take a screenshot of the page for debugging
+      await page.screenshot({ path: '/tmp/error-page.png' });
+      throw new Error('Failed to find listing containers on page');
+    }
 
+    console.log('Getting page content...');
     const html = await page.content();
+    console.log('Page content retrieved, length:', html.length);
+    
     const $ = cheerio.load(html);
     const listings: ScrapedListing[] = [];
 
@@ -190,37 +262,59 @@ async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]
     return listings;
 
   } catch (error) {
-    console.error('Error scraping Airbnb listings:', error);
-    return [];
+    console.error('Error in scrapeAirbnbListings:', error);
+    throw error;
   } finally {
-    await browser.close();
+    if (browser) {
+      await browser.close();
+    }
   }
 }
 
 // Single listing scraper (if needed)
 async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
-  console.log('Attempting to connect to browserless.io for single listing...');
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`,
-    timeout: 60000
-  });
-  console.log('Successfully connected to browserless.io for single listing');
-
+  let browser = null;
+  console.log('Starting scrapeAirbnbListing with URL:', url);
+  
   try {
+    console.log('Attempting to connect to browserless.io for single listing...');
+    browser = await puppeteer.connect({
+      browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`,
+      defaultViewport: { width: 1920, height: 1080 }
+    });
+    console.log('Successfully connected to browserless.io for single listing');
+
     console.log('Creating new page for single listing...');
     const page = await browser.newPage();
     console.log('Page created successfully for single listing');
-    await page.setViewport({ width: 1280, height: 800 });
+    
     await page.setDefaultNavigationTimeout(60000);
     await page.setDefaultTimeout(60000);
-    await page.goto(url, { 
+    
+    // Set user agent to avoid detection
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    
+    console.log('Navigating to URL...');
+    const response = await page.goto(url, { 
       waitUntil: 'networkidle0',
       timeout: 60000
     });
+    
+    if (!response) {
+      throw new Error('Failed to get response from page');
+    }
+    
+    const status = response.status();
+    console.log('Page response status:', status);
+    
+    if (status !== 200) {
+      throw new Error(`Page returned status code ${status}`);
+    }
 
+    console.log('Getting page content...');
     const html = await page.content();
+    console.log('Page content retrieved, length:', html.length);
+    
     const $ = cheerio.load(html);
 
     const title = $('meta[itemprop="name"]').attr('content') || 
@@ -275,7 +369,12 @@ async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
       url,
       rating
     };
+  } catch (error) {
+    console.error('Error in scrapeAirbnbListing:', error);
+    throw error;
   } finally {
-    await browser.close();
+    if (browser) {
+      await browser.close();
+    }
   }
 } 
