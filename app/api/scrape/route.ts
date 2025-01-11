@@ -26,7 +26,8 @@ export async function POST(req: Request) {
 async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]> {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
   });
 
   try {
@@ -180,7 +181,8 @@ async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]
 async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    browserWSEndpoint: `wss://chrome.browserless.io?token=${process.env.BROWSERLESS_API_KEY}`
   });
 
   try {

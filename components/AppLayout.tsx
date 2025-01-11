@@ -1,8 +1,12 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
-import Sidebar from './sidebar';
+import { useState, Suspense } from 'react';
+import dynamic from 'next/dynamic';
+
+const Sidebar = dynamic(() => import('./sidebar'), {
+  loading: () => <div className="w-64 bg-background" />
+});
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,7 +19,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-full bg-background">
-      <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
+      <Suspense fallback={<div className="w-64 bg-background" />}>
+        <Sidebar collapsed={sidebarCollapsed} onCollapsedChange={setSidebarCollapsed} />
+      </Suspense>
       <main className="flex-1 overflow-y-auto p-6">
         {children}
       </main>
