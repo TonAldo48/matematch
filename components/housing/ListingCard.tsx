@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
 import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { recordActivity } from '@/lib/firebase/activities';
 
 interface DistanceInfo {
   driving: {
@@ -31,7 +32,7 @@ interface DistanceInfo {
 }
 
 interface ListingCardProps {
-  listing: ScrapedListing;
+  listing: ScrapedListing & { id: string };
   userOfficeLocation?: {
     formatted: string;
     coordinates: {
@@ -66,6 +67,11 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
   const { user } = useAuth();
   const [interestedUsers, setInterestedUsers] = useState<InterestedUser[]>([]);
   const [showUsersModal, setShowUsersModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const formatValue = (value: number | undefined | null) => {
+    return value && value > 0 ? value : '-';
+  };
 
   // Check if listing is starred on mount
   useEffect(() => {
@@ -165,7 +171,7 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
 
     setIsStarring(true);
     try {
-      const listingRef = doc(db, 'starredListings', user.uid, 'listings', listingId);
+      const listingRef = doc(db, 'starredListings', user.uid, 'listings', listing.id);
 
       if (isStarred) {
         await deleteDoc(listingRef);
@@ -179,7 +185,7 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
           ...listing,
           starredAt: new Date(),
           userId: user.uid,
-          listingId,
+          listingId: listing.id,
         };
 
         // If we have distance info, include it
@@ -193,6 +199,18 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
 
         await setDoc(listingRef, listingData);
         setIsStarred(true);
+
+        // Record the activity
+        await recordActivity('starred_listing', {
+          userId: user.uid,
+          userName: user.displayName || 'Anonymous',
+          userAvatar: user.photoURL || null,
+          listingId,
+          listingTitle: listing.title,
+          listingImage: listing.images?.[0] || null,
+          location: listing.location,
+        });
+
         toast({
           title: "Saved",
           description: "Listing has been saved to your profile.",
@@ -313,9 +331,8 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
   const handleExpressInterest = async () => {
     if (!user) {
       toast({
-        title: "Authentication required",
-        description: "Please sign in to show interest in sharing.",
-        variant: "destructive",
+        title: "Please sign in",
+        description: "You need to be signed in to express interest in a listing",
       });
       return;
     }
@@ -329,6 +346,8 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
       });
       return;
     }
+
+    setIsSubmitting(true);
 
     try {
       // Get user's profile data
@@ -374,19 +393,66 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
         });
       }
 
+      // Automatically star the listing if not already starred
+      if (!isStarred) {
+        const listingRef = doc(db, 'starredListings', user.uid, 'listings', listingId);
+        const listingData: Partial<StarredListing> = {
+          ...listing,
+          starredAt: new Date(),
+          userId: user.uid,
+          listingId,
+        };
+
+        // If we have distance info, include it
+        if (distanceInfo && userOfficeLocation) {
+          listingData.commuteInfo = {
+            calculatedAt: new Date(),
+            distanceInfo,
+            officeLocation: userOfficeLocation
+          };
+        }
+
+        await setDoc(listingRef, listingData);
+        setIsStarred(true);
+        toast({
+          title: "Listing saved",
+          description: "This listing has been automatically saved to your profile.",
+        });
+      }
+
       setIsInterested(true);
       setShowUsersModal(false);
       toast({
         title: "Interest added",
         description: "You are now listed as interested in sharing this listing.",
       });
+
+      // Record the activity with enhanced data
+      await recordActivity('expressed_interest', {
+        userId: user.uid,
+        userName: userProfile.displayName,
+        userAvatar: userProfile.photoURL || null,
+        listingId,
+        listingTitle: listing.title,
+        listingImage: listing.images?.[0] || null,
+        location: listing.location,
+        company: userProfile.company || null,
+        role: userProfile.role || null,
+      });
+
+      toast({
+        title: "Interest Expressed!",
+        description: "We've recorded your interest in this listing.",
+      });
     } catch (error) {
-      console.error('Error adding interest:', error);
+      console.error('Error expressing interest:', error);
       toast({
         title: "Error",
-        description: "Failed to add interest. Please try again.",
+        description: "There was a problem expressing interest. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -575,7 +641,7 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
           ) : (
             <Button 
               variant="default"
-              className="w-full"
+              className="w-full bg-black hover:bg-black/90 text-white"
               onClick={calculateDistance}
               disabled={isCalculating || !userOfficeLocation}
               title={!userOfficeLocation ? "Set your office location in your profile first" : ""}
@@ -598,11 +664,11 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
               View on Airbnb
             </Button>
             <Button
-              variant="default"
-              className="flex-1"
+              variant="secondary"
+              className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
               onClick={() => setShowUsersModal(true)}
             >
-              {interestedUsers?.length > 0 ? `${interestedUsers.length} Interested` : 'Share Housing'}
+              {interestedUsers?.length > 0 ? `${interestedUsers.length} Interested` : 'Show Interest'}
             </Button>
           </div>
         </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/context/auth-context';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, doc, getDoc } from 'firebase/firestore';
 import { StarredListing } from '@/lib/types';
 import { ListingCard } from '@/components/housing/ListingCard';
 import { Card } from '@/components/ui/card';
@@ -15,6 +15,13 @@ export default function SavedListingsPage() {
   const { user } = useAuth();
   const [listings, setListings] = useState<StarredListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userOfficeLocation, setUserOfficeLocation] = useState<{
+    formatted: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  } | undefined>();
 
   useEffect(() => {
     const fetchSavedListings = async () => {
@@ -49,6 +56,33 @@ export default function SavedListingsPage() {
     };
 
     fetchSavedListings();
+  }, [user]);
+
+  // Load user's office location from profile
+  useEffect(() => {
+    async function loadUserProfile() {
+      if (!user) return;
+
+      try {
+        const profileDoc = await getDoc(doc(db, 'profiles', user.uid));
+        if (profileDoc.exists()) {
+          const data = profileDoc.data();
+          if (data.verifiedLocation) {
+            setUserOfficeLocation({
+              formatted: data.verifiedLocation.formatted,
+              coordinates: {
+                lat: data.verifiedLocation.coordinates.lat,
+                lng: data.verifiedLocation.coordinates.lng
+              }
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user profile:', error);
+      }
+    }
+
+    loadUserProfile();
   }, [user]);
 
   if (loading) {
@@ -113,8 +147,12 @@ export default function SavedListingsPage() {
         {listings.map((listing) => (
           <ListingCard
             key={listing.listingId}
-            listing={listing}
+            listing={{
+              ...listing,
+              id: listing.listingId
+            }}
             savedCommuteInfo={listing.commuteInfo}
+            userOfficeLocation={userOfficeLocation}
           />
         ))}
       </div>

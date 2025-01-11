@@ -168,22 +168,25 @@ export default function HousingPage() {
     <div className="container mx-auto py-6">
       <div className="grid grid-cols-12 gap-6">
         {/* Filters Section */}
-        <div className="col-span-3">
-          <FilterCard
-            location={location}
-            onLocationChange={setLocation}
-            date={date}
-            onDateChange={setDate}
-            priceRange={priceRange}
-            onPriceChange={handlePriceChange}
-            onPriceReset={handleResetPriceRange}
-            propertyType={propertyType}
-            onPropertyTypeChange={setPropertyType}
-            selectedAmenities={selectedAmenities}
-            onAmenityChange={handleAmenityChange}
-            onSearch={handleSearch}
-            loading={loading}
-          />
+        <div className="col-span-3 relative">
+          <div className="sticky top-6">
+            <FilterCard
+              location={location}
+              onLocationChange={setLocation}
+              date={date}
+              onDateChange={setDate}
+              priceRange={priceRange}
+              onPriceChange={handlePriceChange}
+              onPriceReset={handleResetPriceRange}
+              propertyType={propertyType}
+              onPropertyTypeChange={setPropertyType}
+              selectedAmenities={selectedAmenities}
+              onAmenityChange={handleAmenityChange}
+              onSearch={handleSearch}
+              loading={loading}
+              userOfficeLocation={userOfficeLocation}
+            />
+          </div>
         </div>
 
         {/* Listings Section */}

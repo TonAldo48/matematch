@@ -93,7 +93,7 @@ export function SharedListingCard({
               className="h-7 text-sm"
               onClick={onExpressInterest}
             >
-              {isUserInterested ? "Remove Interest" : "Share Housing"}
+              {isUserInterested ? "Remove Interest" : "Show Interest"}
             </Button>
           </div>
         </div>

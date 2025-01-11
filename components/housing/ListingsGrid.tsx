@@ -86,7 +86,10 @@ export function ListingsGrid({ listings, loading, userOfficeLocation }: Listings
             {currentListings.map((listing, index) => (
               <ListingCard 
                 key={`${listing.url}-${index}`}
-                listing={listing} 
+                listing={{
+                  ...listing,
+                  id: listing.url.split('/rooms/')[1]?.split('?')[0] || `listing-${index}`
+                }}
                 userOfficeLocation={userOfficeLocation}
               />
             ))}

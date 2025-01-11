@@ -7,34 +7,38 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check if the user owns the document
+    // Helper function to check if user owns the document
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Profiles collection
+    // Listings collection group rules
+    match /{path=**}/listings/{listingId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(request.resource.data.userId);
+    }
+
+    // Listing interests rules
+    match /listingInterests/{listingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        // Only allow updating if not changing other users' data
+        (!request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['listingId']) || resource.data.listingId == request.resource.data.listingId);
+      allow delete: if false;
+    }
+
+    // User profiles
     match /profiles/{userId} {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId);
     }
 
-    // Starred listings collection
+    // Starred listings
     match /starredListings/{userId}/listings/{listingId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    // Listing interests collection - More permissive rules
-    match /listingInterests/{listingId} {
-      // Anyone authenticated can read and write to listing interests
-      allow read, write: if isAuthenticated();
-      
-      // Allow delete if:
-      // 1. User is authenticated
-      // 2. The document exists and has no interested users left
-      allow delete: if isAuthenticated() 
-        && (resource == null || 
-            (resource.data.interestedUsers is list && 
-             resource.data.interestedUsers.size() == 0));
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId);
     }
   }
 } 

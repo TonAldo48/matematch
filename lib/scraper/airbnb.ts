@@ -299,6 +299,14 @@ export async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedLi
         rating = ratingMatch[1]
       }
 
+      // Extract details (beds, baths, guests)
+      const detailsText = $card.find('.t1jojoys').next().text() || ''
+      const details = {
+        bedrooms: parseInt(detailsText.match(/(\d+)\s+bed/)?.[1] || '0'),
+        bathrooms: parseInt(detailsText.match(/(\d+)\s+bath/)?.[1] || '0'),
+        guests: parseInt(detailsText.match(/(\d+)\s+guest/)?.[1] || '0')
+      }
+
       if (title && listingUrl) {
         listings.push({
           title,
@@ -311,11 +319,7 @@ export async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedLi
           },
           images,
           location,
-          details: {
-            bedrooms: 0,
-            bathrooms: 0,
-            guests: 0
-          },
+          details,
           amenities: [],
           description: '',
           url: listingUrl,

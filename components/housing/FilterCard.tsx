@@ -1,4 +1,4 @@
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DateRangePicker } from './DateRangePicker';
 import { PriceRangeInput } from './PriceRangeInput';
 import { AmenitiesSelect } from './AmenitiesSelect';
+import Link from 'next/link';
 
 interface FilterCardProps {
   location: string;
@@ -22,6 +23,9 @@ interface FilterCardProps {
   onAmenityChange: (amenity: string, checked: boolean) => void;
   onSearch: () => void;
   loading: boolean;
+  userOfficeLocation?: {
+    formatted: string;
+  };
 }
 
 export function FilterCard({
@@ -37,7 +41,8 @@ export function FilterCard({
   selectedAmenities,
   onAmenityChange,
   onSearch,
-  loading
+  loading,
+  userOfficeLocation
 }: FilterCardProps) {
   return (
     <Card>
@@ -46,6 +51,26 @@ export function FilterCard({
         <CardDescription>Find your perfect place</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-sm font-medium flex items-center justify-between">
+            <span>Office Location</span>
+            <Link href="/profile" className="text-xs text-primary hover:underline">
+              Change
+            </Link>
+          </label>
+          {userOfficeLocation ? (
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <p className="text-sm text-muted-foreground truncate">{userOfficeLocation.formatted}</p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 p-2 rounded-md bg-muted/50">
+              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <p className="text-sm text-muted-foreground">No office location set</p>
+            </div>
+          )}
+        </div>
+
         <div className="space-y-2">
           <label className="text-sm font-medium">Location</label>
           <Input
