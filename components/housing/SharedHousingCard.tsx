@@ -153,17 +153,21 @@ export function SharedHousingCard({ listing, interestedUsers }: SharedHousingCar
               View on Airbnb
             </Button>
             <Button
-              variant={isUserInterested ? "outline" : "default"}
+              variant={isUserInterested ? "destructive" : "default"}
               size="sm"
-              className={
-                isUserInterested 
-                  ? "h-8 hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
-                  : "h-8 bg-accent hover:bg-accent/90 text-accent-foreground"
-              }
+              className="h-8"
               onClick={isUserInterested ? handleRemoveInterest : handleExpressInterest}
             >
-              <Building2 className="w-3.5 h-3.5 mr-1.5" />
-              {isUserInterested ? "Remove Interest" : "Express Interest"}
+              {isUserInterested ? "Remove Interest" : "Show Interest"}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="h-8"
+              onClick={() => setShowUsersModal(true)}
+            >
+              <Users className="w-3.5 h-3.5 mr-1.5" />
+              View {interestedUsers.length} Interested
             </Button>
           </div>
         </div>

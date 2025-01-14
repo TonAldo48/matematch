@@ -149,6 +149,25 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
     return () => unsubscribe();
   }, [listing.url]);
 
+  // Subscribe to interested users updates
+  useEffect(() => {
+    if (!listing.id) return;
+
+    const listingInterestsRef = doc(db, 'listingInterests', listing.id);
+    const unsubscribe = onSnapshot(listingInterestsRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setInterestedUsers(data.interestedUsers || []);
+      } else {
+        setInterestedUsers([]);
+      }
+    }, (error) => {
+      console.error('Error subscribing to interested users:', error);
+    });
+
+    return () => unsubscribe();
+  }, [listing.id]);
+
   const handleStarToggle = async () => {
     if (!user) {
       toast({
@@ -668,7 +687,19 @@ export function ListingCard({ listing, userOfficeLocation, savedCommuteInfo }: L
               className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
               onClick={() => setShowUsersModal(true)}
             >
-              {interestedUsers?.length > 0 ? `${interestedUsers.length} Interested` : 'Show Interest'}
+              {interestedUsers?.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2 mr-1">
+                    {interestedUsers.slice(0, 2).map((user) => (
+                      <Avatar key={user.userId} className="w-5 h-5 border-2 border-background">
+                        <AvatarImage src={user.userProfile.photoURL} />
+                        <AvatarFallback>{user.userProfile.displayName[0]}</AvatarFallback>
+                      </Avatar>
+                    ))}
+                  </div>
+                  {interestedUsers.length} Interested
+                </div>
+              ) : 'Show Interest'}
             </Button>
           </div>
         </div>

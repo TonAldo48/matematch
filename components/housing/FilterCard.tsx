@@ -1,4 +1,4 @@
-import { Loader2, MapPin } from 'lucide-react';
+import { Loader2, MapPin, Plus, Minus } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ interface FilterCardProps {
   userOfficeLocation?: {
     formatted: string;
   };
+  adults: number;
+  onAdultsChange: (value: number) => void;
 }
 
 export function FilterCard({
@@ -42,7 +44,9 @@ export function FilterCard({
   onAmenityChange,
   onSearch,
   loading,
-  userOfficeLocation
+  userOfficeLocation,
+  adults,
+  onAdultsChange
 }: FilterCardProps) {
   return (
     <Card>
@@ -80,6 +84,43 @@ export function FilterCard({
             onChange={(e) => onLocationChange(e.target.value)}
             className="w-full"
           />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Number of Adults</label>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onAdultsChange(Math.max(1, adults - 1))}
+              disabled={adults <= 1}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Input
+              type="number"
+              value={adults}
+              onChange={(e) => {
+                const value = parseInt(e.target.value);
+                if (!isNaN(value) && value >= 1 && value <= 16) {
+                  onAdultsChange(value);
+                }
+              }}
+              className="w-20 text-center"
+              min={1}
+              max={16}
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onAdultsChange(Math.min(16, adults + 1))}
+              disabled={adults >= 16}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <DateRangePicker date={date} onDateChange={onDateChange} />

@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import AppLayout from "@/components/AppLayout";
 import { AuthProvider } from "@/lib/context/auth-context";
+import { MobileNotice } from "@/components/ui/mobile-notice";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -30,6 +31,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased h-full`}>
         <AuthProvider>
           <AppLayout>{children}</AppLayout>
+          <MobileNotice />
         </AuthProvider>
       </body>
     </html>

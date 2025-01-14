@@ -108,10 +108,13 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
     },
   ];
 
+  // Temporarily hidden tools
+  /*
   const toolsNavigation = [
     { name: 'Address Estimator', href: '/address-estimator', icon: MapPin },
     { name: 'Scraper Test', href: '/scraper-test', icon: Search },
   ];
+  */
 
   const SidebarContent = () => (
     <div className={cn("flex h-full flex-col border-r bg-muted/10", collapsed ? "w-16" : "w-64")}>
@@ -193,6 +196,8 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
           </nav>
         </div>
 
+        {/* Tools section temporarily hidden */}
+        {/*
         <div className="space-y-1">
           {!collapsed && (
             <h2 className="px-2 text-xs font-semibold text-muted-foreground">
@@ -228,6 +233,7 @@ export default function Sidebar({ collapsed = false, onCollapsedChange }: Sideba
             })}
           </nav>
         </div>
+        */}
       </div>
 
       {/* User Profile */}

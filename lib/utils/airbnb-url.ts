@@ -6,6 +6,7 @@ interface AirbnbSearchParams {
   checkIn?: string;  // Format: YYYY-MM-DD
   checkOut?: string; // Format: YYYY-MM-DD
   amenities?: string[];
+  adults?: number;
 }
 
 export function generateAirbnbSearchUrl({
@@ -15,7 +16,8 @@ export function generateAirbnbSearchUrl({
   propertyType = 'homes',
   checkIn,
   checkOut,
-  amenities = []
+  amenities = [],
+  adults = 1
 }: AirbnbSearchParams): string {
   const baseUrl = 'https://www.airbnb.com/s';
   const encodedLocation = encodeURIComponent(location);
@@ -43,7 +45,7 @@ export function generateAirbnbSearchUrl({
     `price_filter_input_type=0`,
     `channel=EXPLORE`,
     `query=${encodedLocation}`,
-    `adults=1`
+    `adults=${adults}`
   ];
 
   // Add amenity filters

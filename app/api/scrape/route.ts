@@ -93,16 +93,33 @@ async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]
     const page = await browser.newPage();
     console.log('Page created successfully');
     
-    await page.setDefaultNavigationTimeout(60000);
-    await page.setDefaultTimeout(60000);
+    // Optimize performance by blocking unnecessary resources
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      const resourceType = request.resourceType();
+      // Block images, fonts, stylesheets, and other non-essential resources
+      if (['image', 'font', 'stylesheet', 'media'].includes(resourceType)) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
+
+    // Reduce default timeouts
+    await page.setDefaultNavigationTimeout(20000);
+    await page.setDefaultTimeout(20000);
     
     // Set user agent to avoid detection
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
+    // Disable features we don't need
+    await page.setJavaScriptEnabled(true);
+    await page.setCacheEnabled(false);
+    
     console.log('Navigating to URL...');
     const response = await page.goto(searchUrl, { 
-      waitUntil: 'networkidle0',
-      timeout: 60000
+      waitUntil: 'domcontentloaded',
+      timeout: 20000
     });
     
     if (!response) {
@@ -119,16 +136,18 @@ async function scrapeAirbnbListings(searchUrl: string): Promise<ScrapedListing[]
     console.log('Waiting for listings to load...');
     try {
       await page.waitForSelector('[data-testid="card-container"]', { 
-        timeout: 30000,
+        timeout: 15000,
         visible: true 
       });
       console.log('Listings loaded successfully');
     } catch (error) {
       console.error('Error waiting for listings:', error);
-      // Take a screenshot of the page for debugging
       await page.screenshot({ path: '/tmp/error-page.png' });
       throw new Error('Failed to find listing containers on page');
     }
+
+    // Reduced wait time for dynamic content
+    await page.waitForTimeout(500);
 
     console.log('Getting page content...');
     const html = await page.content();
@@ -288,16 +307,27 @@ async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
     const page = await browser.newPage();
     console.log('Page created successfully for single listing');
     
-    await page.setDefaultNavigationTimeout(60000);
-    await page.setDefaultTimeout(60000);
+    // Optimize performance by blocking unnecessary resources
+    await page.setRequestInterception(true);
+    page.on('request', (request) => {
+      const resourceType = request.resourceType();
+      if (['image', 'font', 'stylesheet', 'media'].includes(resourceType)) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
+    
+    await page.setDefaultNavigationTimeout(20000);
+    await page.setDefaultTimeout(20000);
     
     // Set user agent to avoid detection
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
     
     console.log('Navigating to URL...');
     const response = await page.goto(url, { 
-      waitUntil: 'networkidle0',
-      timeout: 60000
+      waitUntil: 'domcontentloaded',
+      timeout: 20000
     });
     
     if (!response) {
@@ -310,6 +340,9 @@ async function scrapeAirbnbListing(url: string): Promise<ScrapedListing> {
     if (status !== 200) {
       throw new Error(`Page returned status code ${status}`);
     }
+
+    // Wait a short time for dynamic content
+    await page.waitForTimeout(500);
 
     console.log('Getting page content...');
     const html = await page.content();

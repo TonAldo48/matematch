@@ -5,6 +5,7 @@ import { ListingCard } from './ListingCard';
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState, useMemo } from "react";
+import { MapPin } from "lucide-react";
 
 interface ListingsGridProps {
   listings: ScrapedListing[];
@@ -16,13 +17,14 @@ interface ListingsGridProps {
       lng: number;
     };
   };
+  location?: string;
 }
 
 type SortOption = 'relevance' | 'price-asc' | 'price-desc';
 
 const ITEMS_PER_PAGE = 9;
 
-export function ListingsGrid({ listings, loading, userOfficeLocation }: ListingsGridProps) {
+export function ListingsGrid({ listings, loading, userOfficeLocation, location }: ListingsGridProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<SortOption>('relevance');
   
@@ -78,7 +80,19 @@ export function ListingsGrid({ listings, loading, userOfficeLocation }: Listings
 
       {listings.length === 0 && !loading ? (
         <Card className="p-6 text-center text-muted-foreground">
-          <p>Enter a location and click search to find available listings</p>
+          {location ? (
+            <div className="max-w-md mx-auto">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <MapPin className="w-6 h-6 text-primary" />
+              </div>
+              <p className="font-medium mb-2">No listings found</p>
+              <p className="text-sm">
+                Try adjusting your search filters or entering a different location to find available listings.
+              </p>
+            </div>
+          ) : (
+            <p>Enter a location and click search to find available listings</p>
+          )}
         </Card>
       ) : (
         <>

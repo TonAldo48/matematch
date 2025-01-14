@@ -1,17 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { sendSignInLinkToEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users } from 'lucide-react';
+import { Hero } from '@/components/ui/animated-hero';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -20,8 +20,14 @@ export default function SignUp() {
     setIsLoading(true);
 
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      router.push('/');
+      const actionCodeSettings = {
+        url: window.location.origin + '/auth/verify?isNewUser=true',
+        handleCodeInApp: true,
+      };
+
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem('emailForSignIn', email);
+      setEmailSent(true);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -29,67 +35,73 @@ export default function SignUp() {
     }
   };
 
-  return (
-    <div className="container relative h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-1 lg:px-0">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <div className="flex items-center space-x-2">
-            <Users className="h-6 w-6" />
-            <span className="text-2xl font-bold">MateMatch</span>
+  if (emailSent) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+        <div className="w-full max-w-md mx-auto">
+          <div className="mb-4">
+            <Hero />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Create an account
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Enter your details below to create your account
+          <div className="w-full max-w-[350px] mx-auto">
+            <div className="text-center">
+              <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+                Check your email
+              </h1>
+              <p className="text-sm text-gray-500 mt-1">
+                We've sent a sign-up link to {email}. Click the link to create your account.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center">
+      <div className="w-full max-w-md mx-auto">
+        <div>
+          <Hero />
+        </div>
+        <div className="w-full max-w-[350px] mx-auto">
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+              Create an account
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Enter your email to create your account
+            </p>
+          </div>
+          <form className="mt-4" onSubmit={handleSubmit}>
+            {error && (
+              <div className="text-red-500 text-sm text-center mb-3">{error}</div>
+            )}
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FDB241] focus-visible:border-[#FDB241] disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Email address"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="mt-3 inline-flex w-full items-center justify-center rounded-md bg-[#FDB241] px-4 py-2 text-sm font-medium text-white hover:bg-[#FDB241]/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#FDB241] focus-visible:ring-offset-1 ring-offset-white disabled:pointer-events-none disabled:opacity-50"
+            >
+              {isLoading ? 'Sending link...' : 'Send sign-up link'}
+            </button>
+          </form>
+          <p className="text-center text-sm text-gray-500 mt-4">
+            Already have an account?{' '}
+            <Link href="/signin" className="text-[#FDB241] hover:text-[#FDB241]/90">
+              Sign in
+            </Link>
           </p>
         </div>
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          {error && (
-            <div className="text-destructive text-sm text-center">{error}</div>
-          )}
-          <div className="space-y-4">
-            <div>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            <div>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-          >
-            {isLoading ? 'Creating account...' : 'Sign up'}
-          </button>
-        </form>
-        <p className="px-8 text-center text-sm text-muted-foreground">
-          Already have an account?{' '}
-          <Link href="/signin" className="underline underline-offset-4 hover:text-primary">
-            Sign in
-          </Link>
-        </p>
       </div>
     </div>
   );

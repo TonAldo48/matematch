@@ -31,6 +31,7 @@ export default function HousingPage() {
   const [loading, setLoading] = useState(false);
   const [listings, setListings] = useState<ScrapedListing[]>([]);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
+  const [adults, setAdults] = useState(1);
   const [date, setDate] = useState<DateRange | undefined>({
     from: undefined,
     to: undefined,
@@ -127,6 +128,7 @@ export default function HousingPage() {
     }
 
     setLoading(true);
+    setListings([]);
     try {
       const searchUrl = generateAirbnbSearchUrl({
         location,
@@ -135,7 +137,8 @@ export default function HousingPage() {
         propertyType,
         checkIn: date?.from ? format(date.from, 'yyyy-MM-dd') : undefined,
         checkOut: date?.to ? format(date.to, 'yyyy-MM-dd') : undefined,
-        amenities: selectedAmenities
+        amenities: selectedAmenities,
+        adults
       });
 
       const response = await fetch('/api/scrape', {
@@ -185,6 +188,8 @@ export default function HousingPage() {
               onSearch={handleSearch}
               loading={loading}
               userOfficeLocation={userOfficeLocation}
+              adults={adults}
+              onAdultsChange={setAdults}
             />
           </div>
         </div>
@@ -195,6 +200,7 @@ export default function HousingPage() {
             listings={listings}
             loading={loading}
             userOfficeLocation={userOfficeLocation}
+            location={location}
           />
         </div>
       </div>
