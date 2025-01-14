@@ -4,6 +4,7 @@ import "./globals.css";
 import AppLayout from "@/components/AppLayout";
 import { AuthProvider } from "@/lib/context/auth-context";
 import { MobileNotice } from "@/components/ui/mobile-notice";
+import { Analytics } from "@vercel/analytics/react"
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -32,6 +33,7 @@ export default function RootLayout({
         <AuthProvider>
           <AppLayout>{children}</AppLayout>
           <MobileNotice />
+          <Analytics />
         </AuthProvider>
       </body>
     </html>
