@@ -5,43 +5,93 @@ import { Monitor, ArrowUpRight } from "lucide-react"
 
 export function MobileNotice() {
   const [isMobile, setIsMobile] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
 
   useEffect(() => {
-    const checkIfMobile = () => {
-      const width = window.innerWidth
-      const height = window.innerHeight
-      setIsMobile(width <= 768 || (width <= 935 && height <= 700))
+    // Check if mobile on mount
+    if (typeof window !== 'undefined') {
+      setIsMobile(window.innerWidth < 768)
     }
-
-    // Run on mount
-    checkIfMobile()
-
-    // Add event listener for window resize
-    window.addEventListener('resize', checkIfMobile)
-
-    // Cleanup
-    return () => window.removeEventListener('resize', checkIfMobile)
   }, [])
 
-  if (!isMobile) return null
+  if (!isMobile || dismissed) return null
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[400px] rounded-lg bg-white p-6 shadow-lg">
-        <div className="flex flex-col items-center text-center space-y-4">
-          <div className="rounded-full bg-blue-100 p-3">
-            <Monitor className="h-6 w-6 text-blue-600" />
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}
+    >
+      <div 
+        style={{
+          width: '100%',
+          maxWidth: '300px',
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          padding: '24px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          margin: '0 auto'
+        }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            backgroundColor: '#dbeafe',
+            borderRadius: '9999px',
+            padding: '12px',
+            width: 'fit-content',
+            margin: '0 auto 16px auto'
+          }}>
+            <Monitor style={{ 
+              width: '24px', 
+              height: '24px',
+              color: '#2563eb'
+            }} />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">
-            Better on Desktop
+          <h2 style={{ 
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#111827',
+            marginBottom: '12px'
+          }}>
+            Desktop Recommended
           </h2>
-          <p className="text-sm text-gray-600">
-            For the best experience, we recommend using MateMatch on a desktop or laptop computer.
+          <p style={{ 
+            fontSize: '14px',
+            color: '#4b5563',
+            marginBottom: '16px'
+          }}>
+            For the best experience, please use MateMatch on a desktop or laptop computer.
           </p>
-          <div className="flex items-center text-sm text-blue-600">
-            <span>Continue anyway</span>
-            <ArrowUpRight className="ml-1 h-4 w-4" />
-          </div>
+          <button 
+            onClick={() => setDismissed(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              color: '#2563eb',
+              fontSize: '14px',
+              fontWeight: '500',
+              margin: '0 auto',
+              padding: '8px 16px',
+              cursor: 'pointer',
+              backgroundColor: 'transparent',
+              border: 'none'
+            }}
+          >
+            Continue anyway
+            <ArrowUpRight style={{ width: '16px', height: '16px' }} />
+          </button>
         </div>
       </div>
     </div>
