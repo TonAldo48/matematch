@@ -1,20 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Monitor } from "lucide-react"
+import { Monitor, ArrowUpRight } from "lucide-react"
 
 export function MobileNotice() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    // Function to check if device is mobile
     const checkIfMobile = () => {
       const width = window.innerWidth
       const height = window.innerHeight
@@ -31,26 +23,27 @@ export function MobileNotice() {
     return () => window.removeEventListener('resize', checkIfMobile)
   }, [])
 
-  // Debug log to check if component is working
-  useEffect(() => {
-    console.log('Is Mobile:', isMobile, 'Width:', window.innerWidth, 'Height:', window.innerHeight)
-  }, [isMobile])
-
   if (!isMobile) return null
 
   return (
-    <AlertDialog defaultOpen open>
-      <AlertDialogContent className="fixed inset-0 max-w-[90%] mx-auto my-auto h-fit">
-        <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <Monitor className="h-5 w-5" />
+    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
+      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-[400px] rounded-lg bg-white p-6 shadow-lg">
+        <div className="flex flex-col items-center text-center space-y-4">
+          <div className="rounded-full bg-blue-100 p-3">
+            <Monitor className="h-6 w-6 text-blue-600" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900">
             Better on Desktop
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            For the best experience, we recommend using this application on a desktop or laptop computer with a larger screen.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-      </AlertDialogContent>
-    </AlertDialog>
+          </h2>
+          <p className="text-sm text-gray-600">
+            For the best experience, we recommend using MateMatch on a desktop or laptop computer.
+          </p>
+          <div className="flex items-center text-sm text-blue-600">
+            <span>Continue anyway</span>
+            <ArrowUpRight className="ml-1 h-4 w-4" />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 } 
