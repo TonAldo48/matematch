@@ -4,9 +4,9 @@ MateMatch is a modern web application designed to help users find compatible roo
 
 ## Demo
 
-[![MateMatch Demo](public/images/demo-screenshot.png)](https://www.youtube.com/watch?v=your_video_id)
+[![MateMatch Demo](public/images/demoscreenshot.png)](https://youtu.be/p18uDLfRCgI)
 
-> 💡 Click the image above to watch MateMatch in action. See how easy it is to find roommates and manage housing listings.
+> 💡 Click the image above to watch the full demo video on YouTube!
 
 ## Features
 
