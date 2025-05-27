@@ -1,6 +1,6 @@
 # MateMatch
 
-MateMatch is a modern web application designed to help users find compatible roommates and shared housing opportunities. Built with Next.js 14 and Firebase, it provides a seamless experience for connecting people looking for shared living arrangements.
+MateMatch is a modern web application built to help users find compatible roommates and shared housing opportunities. Built with Next.js 14 and Firebase, it provides a seamless experience for connecting people looking for shared living arrangements.
 
 ## Demo
 
